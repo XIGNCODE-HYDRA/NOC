@@ -382,6 +382,27 @@ export const DeleteNetwatchEntryParams = zod.object({
 
 
 /**
+ * @summary List recent event log entries
+ */
+export const getEventsQueryLimitDefault = 100;
+
+export const GetEventsQueryParams = zod.object({
+  "limit": zod.coerce.number().default(getEventsQueryLimitDefault)
+})
+
+export const GetEventsResponseItem = zod.object({
+  "id": zod.number(),
+  "type": zod.string(),
+  "message": zod.string(),
+  "deviceName": zod.string().nullish(),
+  "host": zod.string().nullish(),
+  "interfaceName": zod.string().nullish(),
+  "recordedAt": zod.string()
+})
+export const GetEventsResponse = zod.array(GetEventsResponseItem)
+
+
+/**
  * @summary Get current ping status for all devices
  */
 export const GetPingLiveResponseItem = zod.object({

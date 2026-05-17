@@ -245,6 +245,19 @@ export interface NetwatchSyncResult {
   updated: number;
 }
 
+export interface EventLogEntry {
+  id: number;
+  type: string;
+  message: string;
+  /** @nullable */
+  deviceName?: string | null;
+  /** @nullable */
+  host?: string | null;
+  /** @nullable */
+  interfaceName?: string | null;
+  recordedAt: string;
+}
+
 export type GetBandwidthHistoryParams = {
 interfaceId: number;
 minutes?: number;
@@ -268,6 +281,10 @@ export const GetBandwidthAggregateWindow = {
 export type GetNetwatchHistoryParams = {
 entryId: number;
 hours?: number;
+};
+
+export type GetEventsParams = {
+limit?: number;
 };
 
 export type GetPingHistoryParams = {

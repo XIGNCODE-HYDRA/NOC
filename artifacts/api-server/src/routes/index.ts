@@ -7,6 +7,7 @@ import bandwidthRouter from "./bandwidth";
 import dashboardRouter from "./dashboard";
 import pingRouter from "./ping";
 import netwatchRouter from "./netwatch";
+import eventsRouter from "./events";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(bandwidthRouter);
 router.use(dashboardRouter);
 router.use(pingRouter);
 router.use(netwatchRouter);
+router.use(eventsRouter);
 
 export default router;

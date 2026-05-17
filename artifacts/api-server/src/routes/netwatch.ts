@@ -5,6 +5,7 @@ import { requireAuth } from "../middlewares/auth";
 import { decryptPassword } from "../lib/crypto";
 import { getNetwatchEntries, addNetwatchEntry, removeNetwatchEntry } from "../lib/mikrotik";
 import { logger } from "../lib/logger";
+import { logEvent } from "../lib/event-logger";
 
 const router = Router();
 router.use(requireAuth);
@@ -28,6 +29,8 @@ interface LiveEntry {
   lastCheckedAt: string | null;
 }
 const liveCache = new Map<number, LiveEntry>();
+// Track previous status per entry for event detection (entryId -> "up"|"down"|"unknown")
+const prevStatus = new Map<number, string>();
 
 // ─── Poller ───────────────────────────────────────────────────────────────────
 async function pollNetwatch(): Promise<void> {
@@ -103,6 +106,27 @@ async function pollNetwatch(): Promise<void> {
               interval: entry.interval, type: entry.type,
             })
             .where(eq(netwatchEntriesTable.id, row.id));
+
+          // Event detection on status transition
+          const prev = prevStatus.get(row.id);
+          if (prev !== undefined && prev !== entry.status) {
+            if (entry.status === "down") {
+              logEvent({
+                type: "timeout",
+                message: `${entry.name || entry.host} went DOWN`,
+                deviceName: device.name,
+                host: entry.host,
+              }).catch(() => {});
+            } else if (entry.status === "up" && prev === "down") {
+              logEvent({
+                type: "recovery",
+                message: `${entry.name || entry.host} came back UP`,
+                deviceName: device.name,
+                host: entry.host,
+              }).catch(() => {});
+            }
+          }
+          prevStatus.set(row.id, entry.status);
 
           liveCache.set(row.id, { id: row.id, ...liveSnapshot });
           await db.insert(netwatchHistoryTable).values({

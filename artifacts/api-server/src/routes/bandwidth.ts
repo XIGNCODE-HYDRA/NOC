@@ -6,6 +6,7 @@ import { requireAuth } from "../middlewares/auth";
 import { decryptPassword } from "../lib/crypto";
 import { getBandwidth } from "../lib/mikrotik";
 import { logger } from "../lib/logger";
+import { logEvent } from "../lib/event-logger";
 
 const router = Router();
 
@@ -13,6 +14,8 @@ router.use(requireAuth);
 
 // In-memory cache for live bandwidth readings (updated by poller)
 const liveCache = new Map<number, { rxBps: number; txBps: number; timestamp: string }>();
+// Track whether each interface was below 1 Mbps last poll (for transition events only)
+const lowBwState = new Map<number, boolean>();
 
 // Background poller - runs every 5 seconds
 async function pollBandwidth(): Promise<void> {
@@ -21,8 +24,10 @@ async function pollBandwidth(): Promise<void> {
       .select({
         id: monitoredInterfacesTable.id,
         interfaceName: monitoredInterfacesTable.interfaceName,
+        alias: monitoredInterfacesTable.alias,
         deviceId: monitoredInterfacesTable.deviceId,
         enabled: monitoredInterfacesTable.enabled,
+        deviceName: devicesTable.name,
         host: devicesTable.host,
         port: devicesTable.port,
         username: devicesTable.username,
@@ -42,6 +47,30 @@ async function pollBandwidth(): Promise<void> {
           txBps: stats.txBps,
           timestamp: new Date().toISOString(),
         });
+
+        // Low-bandwidth event detection (transition only, not every poll)
+        const totalMbps = (stats.rxBps + stats.txBps) / 1_000_000;
+        const wasLow = lowBwState.get(iface.id);
+        const isLow = totalMbps < 1;
+        if (isLow && wasLow === false) {
+          logEvent({
+            type: "low_bandwidth",
+            message: `${iface.alias || iface.interfaceName} dropped below 1 Mbps — ${totalMbps.toFixed(3)} Mbps`,
+            deviceName: iface.deviceName ?? undefined,
+            host: iface.host,
+            interfaceName: iface.alias || iface.interfaceName,
+          }).catch(() => {});
+        } else if (!isLow && wasLow === true) {
+          logEvent({
+            type: "recovery",
+            message: `${iface.alias || iface.interfaceName} recovered — ${totalMbps.toFixed(2)} Mbps`,
+            deviceName: iface.deviceName ?? undefined,
+            host: iface.host,
+            interfaceName: iface.alias || iface.interfaceName,
+          }).catch(() => {});
+        }
+        lowBwState.set(iface.id, isLow);
+
         // Store in history
         await db.insert(bandwidthHistoryTable).values({
           interfaceId: iface.id,

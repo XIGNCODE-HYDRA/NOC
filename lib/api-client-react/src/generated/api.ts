@@ -29,8 +29,10 @@ import type {
   Device,
   DeviceInput,
   DeviceUpdate,
+  EventLogEntry,
   GetBandwidthAggregateParams,
   GetBandwidthHistoryParams,
+  GetEventsParams,
   GetNetwatchHistoryParams,
   GetPingHistoryParams,
   HealthStatus,
@@ -1852,6 +1854,160 @@ export const useDeleteNetwatchEntry = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteNetwatchEntryMutationOptions(options));
+    }
+
+export const getGetEventsUrl = (params?: GetEventsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/events?${stringifiedParams}` : `/api/events`
+}
+
+/**
+ * @summary List recent event log entries
+ */
+export const getEvents = async (params?: GetEventsParams, options?: RequestInit): Promise<EventLogEntry[]> => {
+
+  return customFetch<EventLogEntry[]>(getGetEventsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEventsQueryKey = (params?: GetEventsParams,) => {
+    return [
+    `/api/events`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetEventsQueryOptions = <TData = Awaited<ReturnType<typeof getEvents>>, TError = ErrorType<unknown>>(params?: GetEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEventsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEvents>>> = ({ signal }) => getEvents(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEventsQueryResult = NonNullable<Awaited<ReturnType<typeof getEvents>>>
+export type GetEventsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List recent event log entries
+ */
+
+export function useGetEvents<TData = Awaited<ReturnType<typeof getEvents>>, TError = ErrorType<unknown>>(
+ params?: GetEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEventsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getClearEventsUrl = () => {
+
+
+
+
+  return `/api/events`
+}
+
+/**
+ * @summary Clear all event log entries
+ */
+export const clearEvents = async ( options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getClearEventsUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getClearEventsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearEvents>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof clearEvents>>, TError,void, TContext> => {
+
+const mutationKey = ['clearEvents'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearEvents>>, void> = () => {
+
+
+          return  clearEvents(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClearEventsMutationResult = NonNullable<Awaited<ReturnType<typeof clearEvents>>>
+
+    export type ClearEventsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Clear all event log entries
+ */
+export const useClearEvents = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearEvents>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof clearEvents>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getClearEventsMutationOptions(options));
     }
 
 export const getGetPingLiveUrl = () => {

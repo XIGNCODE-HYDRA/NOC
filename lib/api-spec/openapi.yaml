@@ -462,6 +462,35 @@ paths:
         "204":
           description: Deleted
 
+  /events:
+    get:
+      operationId: getEvents
+      tags: [events]
+      summary: List recent event log entries
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: Event log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventLogEntry"
+    delete:
+      operationId: clearEvents
+      tags: [events]
+      summary: Clear all event log entries
+      responses:
+        "204":
+          description: Cleared
+
   /ping/live:
     get:
       operationId: getPingLive
@@ -924,3 +953,22 @@ components:
           type: integer
         updated:
           type: integer
+
+    EventLogEntry:
+      type: object
+      required: [id, type, message, recordedAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        message:
+          type: string
+        deviceName:
+          type: ["string", "null"]
+        host:
+          type: ["string", "null"]
+        interfaceName:
+          type: ["string", "null"]
+        recordedAt:
+          type: string
