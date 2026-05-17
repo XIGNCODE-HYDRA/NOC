@@ -15,7 +15,7 @@ sudo bash install.sh
 Or pass your GitHub repo URL directly so it clones automatically:
 
 ```bash
-sudo bash install.sh https://github.com/YOUR_USERNAME/noc-monitor
+sudo bash install.sh https://github.com/XIGNCODE-HYDRA/NOC.git
 ```
 
 The script will ask for a DB password and domain name, then handle everything else automatically — Node.js, PostgreSQL, app build, Nginx, SSL, firewall, systemd service.
@@ -45,7 +45,7 @@ git init                          # skip if already a git repo
 git add .
 git commit -m "Initial commit — NOC Monitor"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/noc-monitor.git
+git remote add origin https://github.com/XIGNCODE-HYDRA/NOC.git
 git push -u origin main
 ```
 
@@ -75,16 +75,16 @@ ssh ubuntu@YOUR_VPS_IP
 
 ```bash
 # Download install.sh and run it, passing your repo URL
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/noc-monitor/main/install.sh \
+curl -fsSL https://raw.githubusercontent.com/XIGNCODE-HYDRA/NOC/main/install.sh \
   -o /tmp/install.sh
-sudo bash /tmp/install.sh https://github.com/YOUR_USERNAME/noc-monitor
+sudo bash /tmp/install.sh https://github.com/XIGNCODE-HYDRA/NOC.git
 ```
 
 **Option B — clone first, then install:**
 
 ```bash
 # Clone the repo (use your PAT as the password if it's private)
-git clone https://github.com/YOUR_USERNAME/noc-monitor.git /opt/noc-dashboard
+git clone https://github.com/XIGNCODE-HYDRA/NOC.git /opt/noc-dashboard
 
 # Run the installer
 sudo bash /opt/noc-dashboard/install.sh
@@ -153,7 +153,7 @@ Install on your local machine:
 ### 4.2 Clone and Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/noc-monitor.git
+git clone https://github.com/XIGNCODE-HYDRA/NOC.git
 cd noc-monitor
 pnpm install
 ```

@@ -5,14 +5,14 @@
 #
 #  Usage (pick one):
 #    Option A — from GitHub:
-#      bash <(curl -fsSL https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/install.sh) \
-#           https://github.com/YOUR_USER/YOUR_REPO
+#      bash <(curl -fsSL https://raw.githubusercontent.com/XIGNCODE-HYDRA/NOC/main/install.sh) \
+#           https://github.com/XIGNCODE-HYDRA/NOC.git
 #
 #    Option B — from extracted zip on the server:
 #      bash install.sh
 #
 #    Option C — pass repo URL as argument:
-#      bash install.sh https://github.com/YOUR_USER/YOUR_REPO
+#      bash install.sh https://github.com/XIGNCODE-HYDRA/NOC.git
 # =============================================================================
 set -euo pipefail
 
@@ -226,7 +226,7 @@ INFO "Creating systemd service..."
 cat > /etc/systemd/system/noc-api.service <<EOF
 [Unit]
 Description=NOC Monitor API Server
-Documentation=https://github.com/YOUR_USERNAME/noc-monitor
+Documentation=https://github.com/XIGNCODE-HYDRA/NOC
 After=network.target postgresql.service
 Requires=postgresql.service
 

@@ -66,7 +66,7 @@ EOF
 
 ```bash
 # Clone your repository
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git /opt/noc-dashboard
+git clone https://github.com/XIGNCODE-HYDRA/NOC.git /opt/noc-dashboard
 cd /opt/noc-dashboard
 
 # Install all dependencies
