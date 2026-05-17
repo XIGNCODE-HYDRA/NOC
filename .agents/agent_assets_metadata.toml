@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "YisuLShTXIIfuat8gYW5f"
+uri = "file://noc-monitor.zip"
+type = "unspecified"
+title = "NOC Monitor — Full Project Source (0.78 MB)"

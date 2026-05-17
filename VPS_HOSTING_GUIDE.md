@@ -1,39 +1,42 @@
-# MikroTik NOC Dashboard — VPS Hosting Guide
+# NOC Monitor — VPS Hosting Guide
 
-## Overview
-
-This guide covers deploying the MikroTik NOC Bandwidth Monitor on a VPS using Node.js, PostgreSQL, and a reverse proxy (Nginx). Tested on Ubuntu 22.04 LTS.
+Complete deployment guide for the MikroTik NOC Monitor on a Linux VPS using Node.js, PostgreSQL, and Nginx. Tested on **Ubuntu 22.04 / 24.04 LTS** and **Debian 12**.
 
 ---
 
 ## Requirements
 
-| Component | Minimum |
-|-----------|---------|
-| CPU | 1 vCPU |
-| RAM | 512 MB |
-| Disk | 10 GB SSD |
-| OS | Ubuntu 22.04 / Debian 12 |
-| Node.js | 20+ (LTS) |
-| PostgreSQL | 14+ |
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| CPU | 1 vCPU | 2 vCPU |
+| RAM | 512 MB | 1 GB |
+| Disk | 10 GB SSD | 20 GB SSD |
+| OS | Ubuntu 22.04 / Debian 12 | Ubuntu 24.04 LTS |
+| Node.js | 20+ | 24 (LTS) |
+| PostgreSQL | 14+ | 16+ |
+
+> **Quick deploy:** If you just want to run the automated setup script, jump to the [One-Shot Deploy Script](#one-shot-deploy-script) section.
 
 ---
 
-## Step 1: Server Preparation
+## Manual Step-by-Step Setup
+
+### Step 1: Server Preparation
 
 ```bash
 # Update system
 sudo apt update && sudo apt upgrade -y
 
 # Install required packages
-sudo apt install -y curl git nginx certbot python3-certbot-nginx ufw
+sudo apt install -y curl git nginx certbot python3-certbot-nginx ufw build-essential
 
 # Install Node.js 20 via NVM (recommended)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.bashrc
 nvm install 20
 nvm use 20
-node --version  # should print v20.x.x
+nvm alias default 20
+node --version   # should print v20.x.x
 
 # Install pnpm
 npm install -g pnpm
@@ -46,12 +49,12 @@ sudo systemctl enable postgresql
 
 ---
 
-## Step 2: Database Setup
+### Step 2: Database Setup
 
 ```bash
-# Create database and user
+# Create database and user (replace 'your_strong_password' with a real password)
 sudo -u postgres psql <<EOF
-CREATE USER noc_user WITH PASSWORD 'your_strong_password_here';
+CREATE USER noc_user WITH PASSWORD 'your_strong_password';
 CREATE DATABASE noc_db OWNER noc_user;
 GRANT ALL PRIVILEGES ON DATABASE noc_db TO noc_user;
 EOF
@@ -59,7 +62,7 @@ EOF
 
 ---
 
-## Step 3: Clone & Build the Application
+### Step 3: Clone & Build the Application
 
 ```bash
 # Clone your repository
@@ -67,7 +70,7 @@ git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git /opt/noc-dashboard
 cd /opt/noc-dashboard
 
 # Install all dependencies
-pnpm install
+pnpm install --frozen-lockfile
 
 # Build the API server
 pnpm --filter @workspace/api-server run build
@@ -78,68 +81,67 @@ BASE_PATH="/" pnpm --filter @workspace/noc-dashboard run build
 
 ---
 
-## Step 4: Environment Variables
+### Step 4: Environment Variables
 
 Create `/opt/noc-dashboard/.env.production`:
 
 ```bash
-# Database
-DATABASE_URL=postgresql://noc_user:your_strong_password_here@localhost:5432/noc_db
+# Generate a secure session secret first:
+SESSION_SECRET_VAL=$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")
 
-# Session secret — generate a strong random string:
-# Run: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-SESSION_SECRET=replace_with_your_64_char_random_string
-
-# Node environment
+cat > /opt/noc-dashboard/.env.production <<EOF
+DATABASE_URL=postgresql://noc_user:your_strong_password@localhost:5432/noc_db
+SESSION_SECRET=${SESSION_SECRET_VAL}
 NODE_ENV=production
-
-# API server port (internal, Nginx will proxy)
 PORT=8080
-```
+EOF
 
-```bash
-# Secure the file
+# Lock down the file
 chmod 600 /opt/noc-dashboard/.env.production
 ```
 
 ---
 
-## Step 5: Push Database Schema
+### Step 5: Push Database Schema
 
 ```bash
 cd /opt/noc-dashboard
-export $(cat .env.production | xargs)
+export $(grep -v '^#' .env.production | xargs)
 pnpm --filter @workspace/db run push
 ```
 
 ---
 
-## Step 6: Seed the Default Admin User
+### Step 6: Seed the Default Admin User
+
+The schema auto-seeds `admin` / `admin123` via Drizzle seed on first push. If you need to do it manually:
 
 ```bash
 cd /opt/noc-dashboard
-node -e "
-import('@workspace/db').then(async ({ db, usersTable }) => {
-  const bcrypt = await import('bcryptjs');
-  const hash = await bcrypt.default.hash('change_me_immediately', 10);
-  await db.insert(usersTable).values({ username: 'admin', passwordHash: hash });
-  console.log('Admin user created');
-  process.exit(0);
-}).catch(console.error);
-"
+export $(grep -v '^#' .env.production | xargs)
+
+node --input-type=module <<'SEED'
+import { db, usersTable } from './lib/db/src/index.js';
+import bcrypt from 'bcryptjs';
+const hash = await bcrypt.hash('admin123', 10);
+await db.insert(usersTable).values({ username: 'admin', passwordHash: hash, role: 'admin' })
+  .onConflictDoNothing();
+console.log('Admin user seeded.');
+process.exit(0);
+SEED
 ```
 
-> **Important:** Change the password immediately after first login.
+> **Change the password immediately** after first login via Settings → Change Password.
 
 ---
 
-## Step 7: Systemd Service (API Server)
+### Step 7: Systemd Service
 
 Create `/etc/systemd/system/noc-api.service`:
 
 ```ini
 [Unit]
-Description=MikroTik NOC Dashboard API
+Description=NOC Monitor API Server
 After=network.target postgresql.service
 Requires=postgresql.service
 
@@ -160,7 +162,6 @@ WantedBy=multi-user.target
 ```
 
 ```bash
-# Enable and start the service
 sudo systemctl daemon-reload
 sudo systemctl enable noc-api
 sudo systemctl start noc-api
@@ -169,7 +170,7 @@ sudo systemctl status noc-api
 
 ---
 
-## Step 8: Nginx Configuration
+### Step 8: Nginx Configuration
 
 Create `/etc/nginx/sites-available/noc-dashboard`:
 
@@ -182,12 +183,12 @@ server {
     root /opt/noc-dashboard/artifacts/noc-dashboard/dist/public;
     index index.html;
 
-    # Serve frontend (SPA routing)
+    # SPA routing — all non-asset paths serve index.html
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # Proxy API requests to Node.js
+    # Proxy API requests to Node.js backend
     location /api/ {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
@@ -198,7 +199,9 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
-        proxy_cookie_flags ~ httponly samesite=strict;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
     }
 
     # Security headers
@@ -210,7 +213,6 @@ server {
 ```
 
 ```bash
-# Enable the site
 sudo ln -s /etc/nginx/sites-available/noc-dashboard /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
@@ -218,19 +220,18 @@ sudo systemctl reload nginx
 
 ---
 
-## Step 9: SSL Certificate (HTTPS)
+### Step 9: SSL Certificate (HTTPS)
 
 ```bash
-# Get a free SSL certificate from Let's Encrypt
 sudo certbot --nginx -d your-domain.com -d www.your-domain.com
 
-# Auto-renewal is handled by certbot systemd timer
+# Verify auto-renewal timer is active
 sudo systemctl status certbot.timer
 ```
 
 ---
 
-## Step 10: Firewall
+### Step 10: Firewall
 
 ```bash
 sudo ufw allow OpenSSH
@@ -241,21 +242,53 @@ sudo ufw status
 
 ---
 
-## Step 11: MikroTik Router Firewall
+### Step 11: MikroTik Router Firewall
 
-The NOC server needs access to your MikroTik routers on port **8728** (RouterOS API). On each MikroTik router, allow your VPS IP:
-
-```
-# In MikroTik terminal:
-/ip firewall filter add chain=input src-address=YOUR_VPS_IP protocol=tcp dst-port=8728 action=accept comment="NOC Dashboard API"
-```
-
-Enable the API service on MikroTik:
+The NOC server needs to reach each MikroTik on port **8728** (RouterOS API). On each router:
 
 ```
+# MikroTik terminal — allow VPS IP through API port
+/ip firewall filter add chain=input src-address=YOUR_VPS_IP protocol=tcp dst-port=8728 action=accept comment="NOC Monitor API"
+
+# Verify/enable the API service
 /ip service enable api
 /ip service set api port=8728
+/ip service print
 ```
+
+---
+
+## One-Shot Deploy Script
+
+See `deploy.sh` in the project root — or run it directly from your cloned repo:
+
+```bash
+sudo bash /opt/noc-dashboard/deploy.sh
+```
+
+The script handles everything: packages, Node.js, PostgreSQL, app build, systemd, Nginx, firewall.
+
+---
+
+## User Accounts & Roles
+
+The dashboard has two roles:
+
+| Role | Access |
+|------|--------|
+| `admin` | All pages: Dashboard, Devices, Interfaces, Ping, Netwatch, Settings |
+| `support` | Dashboard + Event Log panel only |
+
+### Managing Users
+
+Log in as `admin` → **Settings** → **Support Accounts**:
+- Create new support accounts (username + password)
+- Delete support accounts
+- You cannot delete your own account
+
+### Change Password
+
+Log in → **Settings** → **Change Password** (available to all roles).
 
 ---
 
@@ -265,36 +298,37 @@ Enable the API service on MikroTik:
 
 ```bash
 sudo journalctl -u noc-api -f
+sudo journalctl -u noc-api --since "1 hour ago"
 ```
 
-### Restart API After Updates
+### Deploy an Update
 
 ```bash
 cd /opt/noc-dashboard
 git pull
-pnpm install
+pnpm install --frozen-lockfile
 pnpm --filter @workspace/api-server run build
+BASE_PATH="/" pnpm --filter @workspace/noc-dashboard run build
 sudo systemctl restart noc-api
 ```
 
-### Update Frontend
-
-```bash
-cd /opt/noc-dashboard
-git pull
-pnpm install
-BASE_PATH="/" pnpm --filter @workspace/noc-dashboard run build
-# No service restart needed — static files are served by Nginx
-```
-
-### Database Backup
+### Database Backup & Restore
 
 ```bash
 # Backup
-pg_dump -U noc_user -h localhost noc_db > noc_backup_$(date +%Y%m%d).sql
+pg_dump -U noc_user -h localhost noc_db > noc_backup_$(date +%Y%m%d_%H%M).sql
 
 # Restore
-psql -U noc_user -h localhost noc_db < noc_backup_20260517.sql
+psql -U noc_user -h localhost noc_db < noc_backup_20260517_1200.sql
+```
+
+### Run DB Migrations After Code Update
+
+```bash
+cd /opt/noc-dashboard
+export $(grep -v '^#' .env.production | xargs)
+pnpm --filter @workspace/db run push
+sudo systemctl restart noc-api
 ```
 
 ---
@@ -323,17 +357,58 @@ jobs:
           script: |
             cd /opt/noc-dashboard
             git pull
-            pnpm install
+            pnpm install --frozen-lockfile
             pnpm --filter @workspace/api-server run build
             BASE_PATH="/" pnpm --filter @workspace/noc-dashboard run build
+            export $(grep -v '^#' .env.production | xargs)
+            pnpm --filter @workspace/db run push
             sudo systemctl restart noc-api
             echo "Deployment complete!"
 ```
 
-Add these secrets to your GitHub repository settings:
+**GitHub repository secrets to add:**
 - `VPS_HOST` — your VPS IP or domain
-- `VPS_USER` — SSH username (e.g. `ubuntu`)
-- `VPS_SSH_KEY` — your private SSH key
+- `VPS_USER` — SSH username (e.g. `ubuntu` or `root`)
+- `VPS_SSH_KEY` — contents of your private SSH key (`~/.ssh/id_rsa`)
+
+---
+
+## Troubleshooting
+
+### API service won't start
+```bash
+sudo journalctl -u noc-api -n 50 --no-pager
+# Check env file is readable by www-data
+sudo -u www-data cat /opt/noc-dashboard/.env.production
+```
+
+### Database connection error
+```bash
+# Test connection manually
+psql postgresql://noc_user:your_password@localhost:5432/noc_db -c "SELECT 1"
+```
+
+### Can't connect to MikroTik
+- Ensure port **8728** is open on the MikroTik firewall
+- Check from VPS: `nc -zv MIKROTIK_IP 8728`
+- Verify: `/ip service print` on MikroTik
+
+### Frontend shows blank/white page
+```bash
+# Rebuild with correct BASE_PATH
+BASE_PATH="/" pnpm --filter @workspace/noc-dashboard run build
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Session drops after API restart
+- Ensure `SESSION_SECRET` is set to the same value after restart
+- Verify `NODE_ENV=production` is in `.env.production`
+
+### Permission denied on /opt/noc-dashboard
+```bash
+sudo chown -R www-data:www-data /opt/noc-dashboard
+sudo chmod -R 755 /opt/noc-dashboard
+```
 
 ---
 
@@ -344,37 +419,4 @@ Add these secrets to your GitHub repository settings:
 | Username | `admin` |
 | Password | `admin123` |
 
-> **Change the password immediately after first login.**
-
----
-
-## Troubleshooting
-
-### API won't start
-```bash
-# Check logs
-sudo journalctl -u noc-api -n 50
-
-# Verify DATABASE_URL is correct
-sudo systemctl cat noc-api
-```
-
-### Can't connect to MikroTik
-- Ensure port 8728 is open on the MikroTik firewall
-- Verify the MikroTik API service is enabled: `/ip service print`
-- Test from VPS: `telnet MIKROTIK_IP 8728`
-
-### Frontend shows blank page
-```bash
-# Rebuild with correct BASE_PATH
-BASE_PATH="/" pnpm --filter @workspace/noc-dashboard run build
-
-# Check Nginx config
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-### Session not persisting
-- Ensure `SESSION_SECRET` is set and consistent across restarts
-- Check cookie settings in browser DevTools
-- Verify `NODE_ENV=production` is set (enables secure cookies)
+> **Change the default password immediately** after first login via Settings → Change Password.
