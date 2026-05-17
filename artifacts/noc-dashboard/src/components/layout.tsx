@@ -50,7 +50,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="h-16 flex items-center px-4 border-b border-primary/20 bg-background/50">
               <Activity className="h-6 w-6 text-primary mr-2" />
               <span className="font-mono font-bold text-lg text-primary glow-text tracking-wider">
-                NOC_CTRL
+                NOC MONITOR
               </span>
             </div>
 

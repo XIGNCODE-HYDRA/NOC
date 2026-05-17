@@ -143,50 +143,55 @@ function NetwatchStrip() {
   if (!entries || entries.length === 0) return null;
 
   return (
-    <Card className="bg-card/60 backdrop-blur-sm border-primary/20">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-mono font-medium text-primary uppercase tracking-widest flex items-center">
-          <Radio className="h-4 w-4 mr-2" /> Netwatch Probes
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
-          {entries.map(entry => {
-            const isUp = entry.status === "up";
-            return (
-              <div
-                key={entry.id}
-                className={`flex flex-col p-3 rounded border transition-all ${
-                  isUp
-                    ? "border-emerald-500/30 bg-emerald-500/5"
-                    : "border-red-500/40 bg-red-500/10"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-mono text-muted-foreground truncate pr-1">
-                    {entry.name || entry.host}
-                  </span>
-                  {isUp
-                    ? <Wifi className="h-3 w-3 text-emerald-400 flex-shrink-0" />
-                    : <WifiOff className="h-3 w-3 text-red-400 flex-shrink-0" />}
-                </div>
-                <div className={`text-xs font-bold font-mono ${isUp ? "text-emerald-400" : "text-red-400"}`}>
+    <div className="space-y-2">
+      <div className="text-xs font-mono text-primary uppercase tracking-widest flex items-center gap-2">
+        <Radio className="h-3.5 w-3.5" />
+        Netwatch Probes
+        <span className="text-muted-foreground">— {entries.length} probe{entries.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        {entries.map(entry => {
+          const isUp = entry.status === "up";
+          const statusColor = isUp ? "text-emerald-400" : "text-red-400";
+          const borderColor = isUp ? "border-emerald-500/20" : "border-red-500/30";
+          const bgGlow = isUp
+            ? "shadow-[inset_0_0_20px_rgba(16,185,129,0.04)]"
+            : "shadow-[inset_0_0_20px_rgba(239,68,68,0.06)]";
+          const IconComp = isUp ? Wifi : WifiOff;
+
+          return (
+            <Card
+              key={entry.id}
+              className={`bg-card/60 backdrop-blur-sm ${borderColor} ${bgGlow} relative overflow-hidden group`}
+            >
+              {/* Big faded icon in corner */}
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                <IconComp className={`h-14 w-14 ${statusColor}`} />
+              </div>
+
+              <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0 pt-4 px-4">
+                <CardTitle className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-widest truncate pr-2">
+                  {entry.name || entry.host}
+                </CardTitle>
+                <IconComp className={`h-4 w-4 flex-shrink-0 ${statusColor}`} />
+              </CardHeader>
+
+              <CardContent className="px-4 pb-4">
+                <div className={`text-2xl font-bold font-mono glow-text ${statusColor}`}>
                   {isUp ? "UP" : "DOWN"}
                 </div>
-                <div className="text-[10px] font-mono text-muted-foreground mt-1">
-                  RTT {formatRtt(entry.rttMs)}
+                <div className="text-xs font-mono text-muted-foreground mt-1 flex items-center gap-2">
+                  <span>RTT {formatRtt(entry.rttMs)}</span>
+                  {(entry.lossPercent ?? 0) > 0 && (
+                    <span className="text-yellow-400">Loss {entry.lossPercent}%</span>
+                  )}
                 </div>
-                {(entry.lossPercent ?? 0) > 0 && (
-                  <div className="text-[10px] font-mono text-yellow-400">
-                    Loss {entry.lossPercent}%
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

@@ -64,7 +64,7 @@ export default function Login() {
             <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
             <Activity className="h-16 w-16 text-primary relative z-10 drop-shadow-[0_0_8px_rgba(0,245,255,0.8)]" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground tracking-widest glow-text">NOC_CTRL</h1>
+          <h1 className="text-3xl font-bold text-foreground tracking-widest glow-text">NOC MONITOR</h1>
           <p className="text-primary/60 text-sm mt-2 flex items-center uppercase tracking-widest">
             <TerminalSquare className="h-4 w-4 mr-2" />
             System Authentication
