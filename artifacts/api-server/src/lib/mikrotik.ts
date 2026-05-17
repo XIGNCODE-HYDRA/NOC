@@ -1,3 +1,4 @@
+import net from "net";
 import { RouterOSAPI } from "node-routeros";
 import { logger } from "./logger";
 
@@ -15,13 +16,51 @@ export interface BandwidthStats {
   txBps: number;
 }
 
+export interface PingResult {
+  latencyMs: number | null;
+  success: boolean;
+}
+
+function safeConnect(
+  host: string,
+  port: number,
+  username: string,
+  password: string,
+): RouterOSAPI {
+  const conn = new RouterOSAPI({ host, port, user: username, password, timeout: 5 });
+  // Attach an error listener immediately so any 'error' event before .connect()
+  // resolves doesn't crash the process with an unhandled exception.
+  conn.on("error", (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.debug({ host, port, err: msg }, "RouterOSAPI background error");
+  });
+  return conn;
+}
+
+export async function measurePing(host: string, port: number): Promise<PingResult> {
+  return new Promise(resolve => {
+    const start = Date.now();
+    const socket = new net.Socket();
+    socket.setTimeout(3000);
+
+    const done = (success: boolean) => {
+      socket.destroy();
+      resolve({ latencyMs: success ? Date.now() - start : null, success });
+    };
+
+    socket.connect(port, host, () => done(true));
+    socket.on("timeout", () => done(false));
+    socket.on("error", () => done(false));
+  });
+}
+
 export async function testConnection(
   host: string,
   port: number,
   username: string,
   password: string,
 ): Promise<{ success: boolean; message: string; routerOsVersion?: string; identity?: string }> {
-  const conn = new RouterOSAPI({ host, port, user: username, password, timeout: 5 });
+  const conn = safeConnect(host, port, username, password);
   try {
     await conn.connect();
     const [identityResult, resourceResult] = await Promise.all([
@@ -46,7 +85,7 @@ export async function getInterfaces(
   username: string,
   password: string,
 ): Promise<MikroTikInterface[]> {
-  const conn = new RouterOSAPI({ host, port, user: username, password, timeout: 5 });
+  const conn = safeConnect(host, port, username, password);
   try {
     await conn.connect();
     const result = await conn.write("/interface/print");
@@ -74,10 +113,9 @@ export async function getBandwidth(
   password: string,
   interfaceName: string,
 ): Promise<BandwidthStats> {
-  const conn = new RouterOSAPI({ host, port, user: username, password, timeout: 5 });
+  const conn = safeConnect(host, port, username, password);
   try {
     await conn.connect();
-    // Get traffic stats using monitor-traffic for 1 second
     const result = await conn.write("/interface/monitor-traffic", [
       `=interface=${interfaceName}`,
       "=once=",

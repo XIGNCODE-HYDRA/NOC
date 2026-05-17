@@ -1,7 +1,7 @@
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { useLogout, useHealthCheck } from "@workspace/api-client-react";
-import { Activity, Server, Network, LayoutDashboard, LogOut, Loader2, Menu } from "lucide-react";
+import { Activity, Server, Network, LayoutDashboard, LogOut, Loader2, Menu, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,6 +30,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/devices", label: "Devices", icon: Server },
     { href: "/interfaces", label: "Interfaces", icon: Network },
+    { href: "/ping", label: "Ping Monitor", icon: Radio },
   ];
 
   return (
@@ -62,7 +63,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 return (
                   <Link key={item.href} href={item.href}>
                     <div
-                      data-testid={`nav-${item.label.toLowerCase()}`}
+                      data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
                       className={`flex items-center px-3 py-2.5 rounded-sm font-mono text-sm transition-all cursor-pointer border ${
                         isActive
                           ? "bg-primary/10 text-primary border-primary/50 shadow-[inset_0_0_10px_rgba(0,245,255,0.1)]"

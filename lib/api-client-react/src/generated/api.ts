@@ -21,6 +21,7 @@ import type {
 
 import type {
   AuthUser,
+  BandwidthAggregate,
   BandwidthHistory,
   BandwidthReading,
   ConnectionTestResult,
@@ -28,12 +29,16 @@ import type {
   Device,
   DeviceInput,
   DeviceUpdate,
+  GetBandwidthAggregateParams,
   GetBandwidthHistoryParams,
+  GetPingHistoryParams,
   HealthStatus,
   LoginInput,
   MonitoredInterface,
   MonitoredInterfaceInput,
   MonitoredInterfaceUpdate,
+  PingHistoryResponse,
+  PingReading,
   RemoteInterface,
   TopInterface
 } from './api.schemas';
@@ -1299,6 +1304,251 @@ export function useGetBandwidthHistory<TData = Awaited<ReturnType<typeof getBand
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetBandwidthHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetBandwidthAggregateUrl = (params: GetBandwidthAggregateParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/bandwidth/aggregate?${stringifiedParams}` : `/api/bandwidth/aggregate`
+}
+
+/**
+ * @summary Get aggregated (bucketed) bandwidth for multi-timeframe graphs
+ */
+export const getBandwidthAggregate = async (params: GetBandwidthAggregateParams, options?: RequestInit): Promise<BandwidthAggregate[]> => {
+
+  return customFetch<BandwidthAggregate[]>(getGetBandwidthAggregateUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBandwidthAggregateQueryKey = (params?: GetBandwidthAggregateParams,) => {
+    return [
+    `/api/bandwidth/aggregate`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetBandwidthAggregateQueryOptions = <TData = Awaited<ReturnType<typeof getBandwidthAggregate>>, TError = ErrorType<unknown>>(params: GetBandwidthAggregateParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBandwidthAggregate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBandwidthAggregateQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBandwidthAggregate>>> = ({ signal }) => getBandwidthAggregate(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBandwidthAggregate>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBandwidthAggregateQueryResult = NonNullable<Awaited<ReturnType<typeof getBandwidthAggregate>>>
+export type GetBandwidthAggregateQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get aggregated (bucketed) bandwidth for multi-timeframe graphs
+ */
+
+export function useGetBandwidthAggregate<TData = Awaited<ReturnType<typeof getBandwidthAggregate>>, TError = ErrorType<unknown>>(
+ params: GetBandwidthAggregateParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBandwidthAggregate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBandwidthAggregateQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetPingLiveUrl = () => {
+
+
+
+
+  return `/api/ping/live`
+}
+
+/**
+ * @summary Get current ping status for all devices
+ */
+export const getPingLive = async ( options?: RequestInit): Promise<PingReading[]> => {
+
+  return customFetch<PingReading[]>(getGetPingLiveUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPingLiveQueryKey = () => {
+    return [
+    `/api/ping/live`
+    ] as const;
+    }
+
+
+export const getGetPingLiveQueryOptions = <TData = Awaited<ReturnType<typeof getPingLive>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPingLive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPingLiveQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPingLive>>> = ({ signal }) => getPingLive({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPingLive>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPingLiveQueryResult = NonNullable<Awaited<ReturnType<typeof getPingLive>>>
+export type GetPingLiveQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get current ping status for all devices
+ */
+
+export function useGetPingLive<TData = Awaited<ReturnType<typeof getPingLive>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPingLive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPingLiveQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetPingHistoryUrl = (params: GetPingHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/ping/history?${stringifiedParams}` : `/api/ping/history`
+}
+
+/**
+ * @summary Get ping latency history for a device
+ */
+export const getPingHistory = async (params: GetPingHistoryParams, options?: RequestInit): Promise<PingHistoryResponse> => {
+
+  return customFetch<PingHistoryResponse>(getGetPingHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPingHistoryQueryKey = (params?: GetPingHistoryParams,) => {
+    return [
+    `/api/ping/history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPingHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getPingHistory>>, TError = ErrorType<unknown>>(params: GetPingHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPingHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPingHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPingHistory>>> = ({ signal }) => getPingHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPingHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPingHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getPingHistory>>>
+export type GetPingHistoryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get ping latency history for a device
+ */
+
+export function useGetPingHistory<TData = Awaited<ReturnType<typeof getPingHistory>>, TError = ErrorType<unknown>>(
+ params: GetPingHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPingHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPingHistoryQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

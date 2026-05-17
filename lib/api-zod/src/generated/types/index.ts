@@ -7,6 +7,7 @@
  */
 
 export * from './authUser';
+export * from './bandwidthAggregate';
 export * from './bandwidthHistory';
 export * from './bandwidthReading';
 export * from './connectionTestResult';
@@ -15,11 +16,18 @@ export * from './device';
 export * from './deviceInput';
 export * from './deviceStatus';
 export * from './deviceUpdate';
+export * from './getBandwidthAggregateParams';
+export * from './getBandwidthAggregateWindow';
 export * from './getBandwidthHistoryParams';
+export * from './getPingHistoryParams';
 export * from './healthStatus';
 export * from './loginInput';
 export * from './monitoredInterface';
 export * from './monitoredInterfaceInput';
 export * from './monitoredInterfaceUpdate';
+export * from './pingHistoryPoint';
+export * from './pingHistoryResponse';
+export * from './pingReading';
+export * from './pingStats';
 export * from './remoteInterface';
 export * from './topInterface';

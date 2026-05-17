@@ -18,6 +18,8 @@ tags:
     description: Interface monitoring management
   - name: bandwidth
     description: Bandwidth statistics
+  - name: ping
+    description: Ping / latency monitoring
   - name: dashboard
     description: Dashboard overview
 paths:
@@ -325,6 +327,73 @@ paths:
                 items:
                   $ref: "#/components/schemas/BandwidthHistory"
 
+  /bandwidth/aggregate:
+    get:
+      operationId: getBandwidthAggregate
+      tags: [bandwidth]
+      summary: Get aggregated (bucketed) bandwidth for multi-timeframe graphs
+      parameters:
+        - name: interfaceId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: window
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [1h, 24h, 7d, 30d]
+      responses:
+        "200":
+          description: Aggregated bandwidth data points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BandwidthAggregate"
+
+  /ping/live:
+    get:
+      operationId: getPingLive
+      tags: [ping]
+      summary: Get current ping status for all devices
+      responses:
+        "200":
+          description: Live ping readings per device
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PingReading"
+
+  /ping/history:
+    get:
+      operationId: getPingHistory
+      tags: [ping]
+      summary: Get ping latency history for a device
+      parameters:
+        - name: deviceId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: hours
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 24
+      responses:
+        "200":
+          description: Ping history with stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PingHistoryResponse"
+
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -542,6 +611,75 @@ components:
           type: number
         txMbps:
           type: number
+
+    BandwidthAggregate:
+      type: object
+      required: [timestamp, rxMbps, txMbps, maxRxMbps, maxTxMbps]
+      properties:
+        timestamp:
+          type: string
+        rxMbps:
+          type: number
+        txMbps:
+          type: number
+        maxRxMbps:
+          type: number
+        maxTxMbps:
+          type: number
+
+    PingReading:
+      type: object
+      required: [deviceId, deviceName, host, status, success]
+      properties:
+        deviceId:
+          type: integer
+        deviceName:
+          type: string
+        host:
+          type: string
+        status:
+          type: string
+        latencyMs:
+          type: ["number", "null"]
+        success:
+          type: boolean
+        timestamp:
+          type: ["string", "null"]
+
+    PingHistoryPoint:
+      type: object
+      required: [timestamp, success]
+      properties:
+        timestamp:
+          type: string
+        latencyMs:
+          type: ["number", "null"]
+        success:
+          type: boolean
+
+    PingStats:
+      type: object
+      required: [packetLoss]
+      properties:
+        minMs:
+          type: ["number", "null"]
+        maxMs:
+          type: ["number", "null"]
+        avgMs:
+          type: ["number", "null"]
+        packetLoss:
+          type: number
+
+    PingHistoryResponse:
+      type: object
+      required: [points, stats]
+      properties:
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/PingHistoryPoint"
+        stats:
+          $ref: "#/components/schemas/PingStats"
 
     DashboardSummary:
       type: object

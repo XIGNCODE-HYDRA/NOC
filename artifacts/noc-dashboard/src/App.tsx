@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard";
 import Devices from "@/pages/devices";
 import Interfaces from "@/pages/interfaces";
 import Bandwidth from "@/pages/bandwidth";
+import Ping from "@/pages/ping";
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,7 @@ function Router() {
         <ProtectedRoute path="/devices" component={Devices} />
         <ProtectedRoute path="/interfaces" component={Interfaces} />
         <ProtectedRoute path="/bandwidth/:interfaceId" component={Bandwidth} />
+        <ProtectedRoute path="/ping" component={Ping} />
         <Route component={NotFound} />
       </Switch>
     </AnimatePresence>
@@ -71,14 +73,14 @@ function App() {
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>
-          <Toaster 
-            theme="dark" 
+          <Toaster
+            theme="dark"
             toastOptions={{
               className: 'bg-card border border-primary text-primary font-mono rounded-none',
               style: {
                 boxShadow: '0 0 10px rgba(0, 245, 255, 0.2)'
               }
-            }} 
+            }}
           />
         </TooltipProvider>
       </AuthProvider>

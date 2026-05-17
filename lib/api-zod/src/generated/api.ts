@@ -254,6 +254,64 @@ export const GetBandwidthHistoryResponse = zod.array(GetBandwidthHistoryResponse
 
 
 /**
+ * @summary Get aggregated (bucketed) bandwidth for multi-timeframe graphs
+ */
+export const GetBandwidthAggregateQueryParams = zod.object({
+  "interfaceId": zod.coerce.number(),
+  "window": zod.enum(['1h', '24h', '7d', '30d'])
+})
+
+export const GetBandwidthAggregateResponseItem = zod.object({
+  "timestamp": zod.string(),
+  "rxMbps": zod.number(),
+  "txMbps": zod.number(),
+  "maxRxMbps": zod.number(),
+  "maxTxMbps": zod.number()
+})
+export const GetBandwidthAggregateResponse = zod.array(GetBandwidthAggregateResponseItem)
+
+
+/**
+ * @summary Get current ping status for all devices
+ */
+export const GetPingLiveResponseItem = zod.object({
+  "deviceId": zod.number(),
+  "deviceName": zod.string(),
+  "host": zod.string(),
+  "status": zod.string(),
+  "latencyMs": zod.number().nullish(),
+  "success": zod.boolean(),
+  "timestamp": zod.string().nullish()
+})
+export const GetPingLiveResponse = zod.array(GetPingLiveResponseItem)
+
+
+/**
+ * @summary Get ping latency history for a device
+ */
+export const getPingHistoryQueryHoursDefault = 24;
+
+export const GetPingHistoryQueryParams = zod.object({
+  "deviceId": zod.coerce.number(),
+  "hours": zod.coerce.number().default(getPingHistoryQueryHoursDefault)
+})
+
+export const GetPingHistoryResponse = zod.object({
+  "points": zod.array(zod.object({
+  "timestamp": zod.string(),
+  "latencyMs": zod.number().nullish(),
+  "success": zod.boolean()
+})),
+  "stats": zod.object({
+  "minMs": zod.number().nullish(),
+  "maxMs": zod.number().nullish(),
+  "avgMs": zod.number().nullish(),
+  "packetLoss": zod.number()
+})
+})
+
+
+/**
  * @summary Get dashboard summary statistics
  */
 export const GetDashboardSummaryResponse = zod.object({

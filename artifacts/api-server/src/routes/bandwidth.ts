@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, monitoredInterfacesTable, devicesTable, bandwidthHistoryTable } from "@workspace/db";
-import { eq, and, gte, desc } from "drizzle-orm";
+import { db, pool, monitoredInterfacesTable, devicesTable, bandwidthHistoryTable } from "@workspace/db";
+import { eq, and, gte, lt, desc } from "drizzle-orm";
 import { GetBandwidthHistoryQueryParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { decryptPassword } from "../lib/crypto";
@@ -53,13 +53,13 @@ async function pollBandwidth(): Promise<void> {
         await db.update(devicesTable).set({ status: "online", lastSeen: new Date() }).where(eq(devicesTable.id, iface.deviceId));
       } catch (err) {
         logger.debug({ interfaceId: iface.id, err }, "Failed polling interface");
-        // Update device status to offline
         await db.update(devicesTable).set({ status: "offline" }).where(eq(devicesTable.id, iface.deviceId));
       }
     }
-    // Cleanup old history (keep last 24 hours)
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    await db.delete(bandwidthHistoryTable).where(gte(bandwidthHistoryTable.recordedAt, cutoff));
+
+    // Keep 30 days of history; delete records older than cutoff
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    await db.delete(bandwidthHistoryTable).where(lt(bandwidthHistoryTable.recordedAt, cutoff));
   } catch (err) {
     logger.error({ err }, "Error in bandwidth poller");
   }
@@ -126,7 +126,67 @@ router.get("/bandwidth/history", async (req, res): Promise<void> => {
     timestamp: r.recordedAt.toISOString(),
     rxMbps: r.rxBps / 1_000_000,
     txMbps: r.txBps / 1_000_000,
+    rxBps: r.rxBps,
+    txBps: r.txBps,
   })));
+});
+
+const VALID_WINDOWS = ["1h", "24h", "7d", "30d"] as const;
+type WindowKey = typeof VALID_WINDOWS[number];
+
+const WINDOW_CONFIG = {
+  "1h":  { intervalMs: 60 * 60 * 1000,          bucketSec: 60 },         // 1-min buckets
+  "24h": { intervalMs: 24 * 60 * 60 * 1000,      bucketSec: 5 * 60 },    // 5-min buckets
+  "7d":  { intervalMs: 7 * 24 * 60 * 60 * 1000,  bucketSec: 30 * 60 },  // 30-min buckets
+  "30d": { intervalMs: 30 * 24 * 60 * 60 * 1000, bucketSec: 2 * 3600 }, // 2-hour buckets
+};
+
+router.get("/bandwidth/aggregate", async (req, res): Promise<void> => {
+  const interfaceId = Number(req.query.interfaceId);
+  const window = req.query.window as string;
+  if (!Number.isInteger(interfaceId) || interfaceId <= 0) {
+    res.status(400).json({ error: "Invalid interfaceId" });
+    return;
+  }
+  if (!VALID_WINDOWS.includes(window as WindowKey)) {
+    res.status(400).json({ error: "Invalid window, must be one of: 1h, 24h, 7d, 30d" });
+    return;
+  }
+  const win = window as WindowKey;
+  const { intervalMs, bucketSec } = WINDOW_CONFIG[win];
+  const cutoff = new Date(Date.now() - intervalMs);
+
+  // bucketSec is a controlled integer from WINDOW_CONFIG — safe to inline
+  const { rows } = await pool.query<{
+    bucket: Date;
+    rx_bps: number;
+    tx_bps: number;
+    max_rx_bps: number;
+    max_tx_bps: number;
+  }>(
+    `SELECT
+       to_timestamp(floor(extract(epoch from recorded_at) / ${bucketSec}) * ${bucketSec}) AS bucket,
+       avg(rx_bps)::float AS rx_bps,
+       avg(tx_bps)::float AS tx_bps,
+       max(rx_bps)::float AS max_rx_bps,
+       max(tx_bps)::float AS max_tx_bps
+     FROM bandwidth_history
+     WHERE interface_id = $1
+       AND recorded_at >= $2
+     GROUP BY floor(extract(epoch from recorded_at) / ${bucketSec})
+     ORDER BY bucket ASC`,
+    [interfaceId, cutoff.toISOString()],
+  );
+
+  const data = rows.map(r => ({
+    timestamp: r.bucket instanceof Date ? r.bucket.toISOString() : String(r.bucket),
+    rxMbps: (Number(r.rx_bps) || 0) / 1_000_000,
+    txMbps: (Number(r.tx_bps) || 0) / 1_000_000,
+    maxRxMbps: (Number(r.max_rx_bps) || 0) / 1_000_000,
+    maxTxMbps: (Number(r.max_tx_bps) || 0) / 1_000_000,
+  }));
+
+  res.json(data);
 });
 
 export { liveCache };

@@ -122,6 +122,48 @@ export interface BandwidthHistory {
   txMbps: number;
 }
 
+export interface BandwidthAggregate {
+  timestamp: string;
+  rxMbps: number;
+  txMbps: number;
+  maxRxMbps: number;
+  maxTxMbps: number;
+}
+
+export interface PingReading {
+  deviceId: number;
+  deviceName: string;
+  host: string;
+  status: string;
+  /** @nullable */
+  latencyMs?: number | null;
+  success: boolean;
+  /** @nullable */
+  timestamp?: string | null;
+}
+
+export interface PingHistoryPoint {
+  timestamp: string;
+  /** @nullable */
+  latencyMs?: number | null;
+  success: boolean;
+}
+
+export interface PingStats {
+  /** @nullable */
+  minMs?: number | null;
+  /** @nullable */
+  maxMs?: number | null;
+  /** @nullable */
+  avgMs?: number | null;
+  packetLoss: number;
+}
+
+export interface PingHistoryResponse {
+  points: PingHistoryPoint[];
+  stats: PingStats;
+}
+
 export interface DashboardSummary {
   totalDevices: number;
   onlineDevices: number;
@@ -144,5 +186,25 @@ export interface TopInterface {
 export type GetBandwidthHistoryParams = {
 interfaceId: number;
 minutes?: number;
+};
+
+export type GetBandwidthAggregateParams = {
+interfaceId: number;
+window: GetBandwidthAggregateWindow;
+};
+
+export type GetBandwidthAggregateWindow = typeof GetBandwidthAggregateWindow[keyof typeof GetBandwidthAggregateWindow];
+
+
+export const GetBandwidthAggregateWindow = {
+  '1h': '1h',
+  '24h': '24h',
+  '7d': '7d',
+  '30d': '30d',
+} as const;
+
+export type GetPingHistoryParams = {
+deviceId: number;
+hours?: number;
 };
 
