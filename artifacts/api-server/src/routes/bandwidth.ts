@@ -16,6 +16,8 @@ router.use(requireAuth);
 const liveCache = new Map<number, { rxBps: number; txBps: number; timestamp: string }>();
 // Track whether each interface was below 1 Mbps last poll (for transition events only)
 const lowBwState = new Map<number, boolean>();
+// Track 0-Mbps (system down) state per direction: key = `${id}-rx` or `${id}-tx`
+const zeroState = new Map<string, boolean>();
 
 // Background poller - runs every 5 seconds
 async function pollBandwidth(): Promise<void> {
@@ -70,6 +72,52 @@ async function pollBandwidth(): Promise<void> {
           }).catch(() => {});
         }
         lowBwState.set(iface.id, isLow);
+
+        // System-down event: RX or TX is exactly 0 bps (transition only)
+        const rxKey = `${iface.id}-rx`;
+        const txKey = `${iface.id}-tx`;
+        const rxWasZero = zeroState.get(rxKey);
+        const txWasZero = zeroState.get(txKey);
+        const rxIsZero = stats.rxBps === 0;
+        const txIsZero = stats.txBps === 0;
+
+        if (rxIsZero && rxWasZero === false) {
+          logEvent({
+            type: "system_down",
+            message: `${iface.alias || iface.interfaceName} — DOWNLOAD is 0 Mbps (link may be down)`,
+            deviceName: iface.deviceName ?? undefined,
+            host: iface.host,
+            interfaceName: iface.alias || iface.interfaceName,
+          }).catch(() => {});
+        } else if (!rxIsZero && rxWasZero === true) {
+          logEvent({
+            type: "recovery",
+            message: `${iface.alias || iface.interfaceName} — DOWNLOAD restored (${(stats.rxBps / 1_000_000).toFixed(2)} Mbps)`,
+            deviceName: iface.deviceName ?? undefined,
+            host: iface.host,
+            interfaceName: iface.alias || iface.interfaceName,
+          }).catch(() => {});
+        }
+        zeroState.set(rxKey, rxIsZero);
+
+        if (txIsZero && txWasZero === false) {
+          logEvent({
+            type: "system_down",
+            message: `${iface.alias || iface.interfaceName} — UPLOAD is 0 Mbps (link may be down)`,
+            deviceName: iface.deviceName ?? undefined,
+            host: iface.host,
+            interfaceName: iface.alias || iface.interfaceName,
+          }).catch(() => {});
+        } else if (!txIsZero && txWasZero === true) {
+          logEvent({
+            type: "recovery",
+            message: `${iface.alias || iface.interfaceName} — UPLOAD restored (${(stats.txBps / 1_000_000).toFixed(2)} Mbps)`,
+            deviceName: iface.deviceName ?? undefined,
+            host: iface.host,
+            interfaceName: iface.alias || iface.interfaceName,
+          }).catch(() => {});
+        }
+        zeroState.set(txKey, txIsZero);
 
         // Store in history
         await db.insert(bandwidthHistoryTable).values({

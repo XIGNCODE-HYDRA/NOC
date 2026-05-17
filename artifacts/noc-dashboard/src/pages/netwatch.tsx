@@ -27,9 +27,8 @@ import { Eye, Shield, Trash2, Plus, RefreshCw, Activity, ChevronDown, ChevronUp 
 
 function rttColor(ms: number | null | undefined, status: string): string {
   if (status === "down" || ms == null) return "#ef4444";
-  if (ms < 5) return "#39ff14";
-  if (ms < 20) return "#00f5ff";
-  if (ms < 100) return "#f59e0b";
+  if (ms <= 70) return "#10b981";
+  if (ms <= 150) return "#f59e0b";
   return "#ef4444";
 }
 
@@ -500,10 +499,9 @@ export default function Netwatch() {
       {/* RTT legend */}
       <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
         {[
-          { color: "#39ff14", label: "< 5ms — Excellent" },
-          { color: "#00f5ff", label: "5–20ms — Good" },
-          { color: "#f59e0b", label: "20–100ms — Fair" },
-          { color: "#ef4444", label: "> 100ms / Down" },
+          { color: "#10b981", label: "≤ 70ms — Good" },
+          { color: "#f59e0b", label: "71–150ms — Fair" },
+          { color: "#ef4444", label: "> 150ms / Down" },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: `${color}25`, border: `1px solid ${color}` }} />

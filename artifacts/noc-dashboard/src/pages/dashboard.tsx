@@ -53,6 +53,7 @@ interface EventEntry {
 }
 
 function eventTypeColor(type: string) {
+  if (type === "system_down") return "text-red-300 border-red-400/60 bg-red-500/15";
   if (type === "timeout") return "text-red-400 border-red-500/40 bg-red-500/10";
   if (type === "low_bandwidth") return "text-yellow-400 border-yellow-500/40 bg-yellow-500/10";
   if (type === "recovery") return "text-emerald-400 border-emerald-500/40 bg-emerald-500/10";
@@ -60,6 +61,7 @@ function eventTypeColor(type: string) {
 }
 
 function eventTypeLabel(type: string) {
+  if (type === "system_down") return "SYS DOWN";
   if (type === "timeout") return "TIMEOUT";
   if (type === "low_bandwidth") return "LOW BW";
   if (type === "recovery") return "RECOVERY";
