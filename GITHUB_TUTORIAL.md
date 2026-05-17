@@ -4,6 +4,24 @@ This tutorial walks you through pushing the project to GitHub and deploying it o
 
 ---
 
+## Quick Start — One Command Install
+
+Once the code is on your VPS (via git clone or extracted zip), run:
+
+```bash
+sudo bash install.sh
+```
+
+Or pass your GitHub repo URL directly so it clones automatically:
+
+```bash
+sudo bash install.sh https://github.com/YOUR_USERNAME/noc-monitor
+```
+
+The script will ask for a DB password and domain name, then handle everything else automatically — Node.js, PostgreSQL, app build, Nginx, SSL, firewall, systemd service.
+
+---
+
 ## Part 1 — Push to GitHub
 
 ### 1.1 Create a GitHub Repository
@@ -51,24 +69,40 @@ ssh ubuntu@YOUR_VPS_IP
 # or: ssh root@YOUR_VPS_IP
 ```
 
-### 2.2 Run the One-Shot Deploy Script
+### 2.2 Run the One-Command Installer
 
-The easiest way — download and run `deploy.sh` directly from GitHub:
+**Option A — let the script clone for you (easiest):**
 
 ```bash
-# Clone the repo first (use your PAT as the password when prompted)
-git clone https://github.com/YOUR_USERNAME/noc-monitor.git /opt/noc-dashboard
-
-# Run the interactive deploy script
-cd /opt/noc-dashboard
-sudo bash deploy.sh
+# Download install.sh and run it, passing your repo URL
+curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/noc-monitor/main/install.sh \
+  -o /tmp/install.sh
+sudo bash /tmp/install.sh https://github.com/YOUR_USERNAME/noc-monitor
 ```
 
-The script will ask for:
-- Your database password (it will create the DB user and database)
-- Your domain name (or press Enter to skip SSL for now)
+**Option B — clone first, then install:**
 
-It will then automatically install Node.js, PostgreSQL, build the app, create systemd service, and configure Nginx.
+```bash
+# Clone the repo (use your PAT as the password if it's private)
+git clone https://github.com/YOUR_USERNAME/noc-monitor.git /opt/noc-dashboard
+
+# Run the installer
+sudo bash /opt/noc-dashboard/install.sh
+```
+
+**Option C — extracted from the zip:**
+
+```bash
+# Upload noc-monitor.zip to your VPS, then:
+unzip noc-monitor.zip -d /opt/noc-dashboard
+sudo bash /opt/noc-dashboard/install.sh
+```
+
+The installer will ask you for:
+1. **DB password** — or press Enter to auto-generate one
+2. **Domain/IP** — your domain (for Nginx + SSL) or your VPS IP
+
+It then installs Node.js, PostgreSQL, builds the app, configures Nginx, gets an SSL certificate, sets up the systemd service, and enables the firewall — all automatically.
 
 ### 2.3 Post-Deploy Checklist
 
