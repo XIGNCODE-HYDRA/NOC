@@ -302,7 +302,7 @@ export default function Dashboard() {
           </h1>
           <div className="flex items-center text-xs text-muted-foreground mt-1">
             <div className="h-2 w-2 rounded-full status-pulse-online mr-2" />
-            LIVE FEED ACTIVE — 3s POLL
+            LIVE FEED ACTIVE
           </div>
         </div>
         <LiveClock />

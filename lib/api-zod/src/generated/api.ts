@@ -27,7 +27,8 @@ export const LoginBody = zod.object({
 
 export const LoginResponse = zod.object({
   "id": zod.number(),
-  "username": zod.string()
+  "username": zod.string(),
+  "role": zod.string()
 })
 
 
@@ -36,7 +37,46 @@ export const LoginResponse = zod.object({
  */
 export const GetMeResponse = zod.object({
   "id": zod.number(),
-  "username": zod.string()
+  "username": zod.string(),
+  "role": zod.string()
+})
+
+
+/**
+ * @summary Change current user password
+ */
+export const ChangePasswordBody = zod.object({
+  "currentPassword": zod.string(),
+  "newPassword": zod.string()
+})
+
+
+/**
+ * @summary List all user accounts (admin only)
+ */
+export const ListUsersResponseItem = zod.object({
+  "id": zod.number(),
+  "username": zod.string(),
+  "role": zod.string(),
+  "createdAt": zod.string()
+})
+export const ListUsersResponse = zod.array(ListUsersResponseItem)
+
+
+/**
+ * @summary Create a support account (admin only)
+ */
+export const CreateUserBody = zod.object({
+  "username": zod.string(),
+  "password": zod.string()
+})
+
+
+/**
+ * @summary Delete a user account (admin only)
+ */
+export const DeleteUserParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 

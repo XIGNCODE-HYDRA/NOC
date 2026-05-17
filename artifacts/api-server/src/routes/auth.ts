@@ -26,7 +26,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   req.session.userId = user.id;
   req.session.username = user.username;
-  res.json({ id: user.id, username: user.username });
+  req.session.role = user.role;
+  res.json({ id: user.id, username: user.username, role: user.role });
 });
 
 router.post("/auth/logout", (req, res): void => {
@@ -36,7 +37,22 @@ router.post("/auth/logout", (req, res): void => {
 });
 
 router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
-  res.json({ id: req.session.userId, username: req.session.username });
+  res.json({ id: req.session.userId, username: req.session.username, role: req.session.role });
+});
+
+router.post("/auth/change-password", requireAuth, async (req, res): Promise<void> => {
+  const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+  if (!currentPassword || !newPassword || newPassword.length < 6) {
+    res.status(400).json({ error: "Current password and new password (min 6 chars) required" });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+  const valid = await verifyPassword(currentPassword, user.passwordHash);
+  if (!valid) { res.status(401).json({ error: "Current password is incorrect" }); return; }
+  const passwordHash = await hashPassword(newPassword);
+  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, user.id));
+  res.json({ ok: true });
 });
 
 export default router;

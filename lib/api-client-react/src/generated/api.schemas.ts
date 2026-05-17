@@ -17,6 +17,7 @@ export interface LoginInput {
 export interface AuthUser {
   id: number;
   username: string;
+  role: string;
 }
 
 export type DeviceStatus = typeof DeviceStatus[keyof typeof DeviceStatus];
@@ -245,6 +246,13 @@ export interface NetwatchSyncResult {
   updated: number;
 }
 
+export interface UserAccount {
+  id: number;
+  username: string;
+  role: string;
+  createdAt: string;
+}
+
 export interface EventLogEntry {
   id: number;
   type: string;
@@ -257,6 +265,16 @@ export interface EventLogEntry {
   interfaceName?: string | null;
   recordedAt: string;
 }
+
+export type ChangePasswordBody = {
+  currentPassword: string;
+  newPassword: string;
+};
+
+export type CreateUserBody = {
+  username: string;
+  password: string;
+};
 
 export type GetBandwidthHistoryParams = {
 interfaceId: number;

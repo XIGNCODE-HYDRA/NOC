@@ -1,7 +1,7 @@
 import { db, eventLogTable } from "@workspace/db";
 import { desc, lt } from "drizzle-orm";
 
-export type EventType = "timeout" | "low_bandwidth" | "recovery";
+export type EventType = "timeout" | "low_bandwidth" | "recovery" | "system_down";
 
 export async function logEvent(params: {
   type: EventType;

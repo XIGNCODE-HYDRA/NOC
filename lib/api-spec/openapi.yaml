@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: auth
     description: Authentication
+  - name: users
+    description: User management
   - name: devices
     description: MikroTik device management
   - name: interfaces
@@ -83,6 +85,82 @@ paths:
                 $ref: "#/components/schemas/AuthUser"
         "401":
           description: Not authenticated
+
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change current user password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        "200":
+          description: Password changed
+        "401":
+          description: Wrong current password
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all user accounts (admin only)
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserAccount"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a support account (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAccount"
+
+  /users/{id}:
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user account (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
 
   /devices:
     get:
@@ -580,11 +658,13 @@ components:
 
     AuthUser:
       type: object
-      required: [id, username]
+      required: [id, username, role]
       properties:
         id:
           type: integer
         username:
+          type: string
+        role:
           type: string
 
     Device:
@@ -953,6 +1033,19 @@ components:
           type: integer
         updated:
           type: integer
+
+    UserAccount:
+      type: object
+      required: [id, username, role, createdAt]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        role:
+          type: string
+        createdAt:
+          type: string
 
     EventLogEntry:
       type: object
