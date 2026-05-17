@@ -25,7 +25,7 @@ info "Building API server..."
 pnpm --filter @workspace/api-server run build
 
 info "Building frontend..."
-BASE_PATH="/" pnpm --filter @workspace/noc-dashboard run build
+PORT=3000 BASE_PATH="/" pnpm --filter @workspace/noc-dashboard run build
 
 info "Applying DB migrations..."
 export $(grep -v '^#' "$APP_DIR/.env.production" | xargs)

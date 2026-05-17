@@ -205,7 +205,7 @@ pnpm --filter @workspace/api-server run build
 OK "API server built"
 
 INFO "Building frontend..."
-BASE_PATH="/" pnpm --filter @workspace/noc-dashboard run build
+PORT=3000 BASE_PATH="/" pnpm --filter @workspace/noc-dashboard run build
 OK "Frontend built"
 
 # ── Step 9: Push DB schema ────────────────────────────────────────────────────
