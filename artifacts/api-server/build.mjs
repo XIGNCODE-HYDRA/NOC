@@ -100,6 +100,8 @@ async function buildAll() {
       "puppeteer",
       "puppeteer-core",
       "electron",
+      "source-map-support",
+      "node-routeros",
     ],
     sourcemap: "linked",
     plugins: [

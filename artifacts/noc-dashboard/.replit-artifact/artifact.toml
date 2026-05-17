@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "MikroTik NOC Dashboard"
+version = "1.0.0"
+id = "artifacts/noc-dashboard"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21749
+
+[services.development]
+run = "pnpm --filter @workspace/noc-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/noc-dashboard", "run", "build" ]
+publicDir = "artifacts/noc-dashboard/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21749"
+BASE_PATH = "/"
