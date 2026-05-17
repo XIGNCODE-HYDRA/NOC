@@ -183,6 +183,68 @@ export interface TopInterface {
   totalMbps: number;
 }
 
+export interface NetwatchEntry {
+  id: number;
+  deviceId: number;
+  deviceName: string;
+  mikrotikId: string;
+  host: string;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  comment?: string | null;
+  interval: string;
+  type: string;
+  status: string;
+  /** @nullable */
+  lastRttMs?: number | null;
+  /** @nullable */
+  rttMs?: number | null;
+  /** @nullable */
+  rttMinMs?: number | null;
+  /** @nullable */
+  rttMaxMs?: number | null;
+  lossPercent?: number;
+  /** @nullable */
+  lastCheckedAt?: string | null;
+}
+
+export interface NetwatchEntryInput {
+  deviceId: number;
+  host: string;
+  interval?: string;
+  type?: string;
+  comment?: string;
+}
+
+export interface NetwatchHistoryPoint {
+  timestamp: string;
+  status: string;
+  /** @nullable */
+  rttMs?: number | null;
+}
+
+export interface NetwatchStats {
+  /** @nullable */
+  minMs?: number | null;
+  /** @nullable */
+  maxMs?: number | null;
+  /** @nullable */
+  avgMs?: number | null;
+  packetLoss: number;
+}
+
+export interface NetwatchHistoryResponse {
+  points: NetwatchHistoryPoint[];
+  stats: NetwatchStats;
+}
+
+export interface NetwatchSyncResult {
+  synced: number;
+  added: number;
+  updated: number;
+}
+
 export type GetBandwidthHistoryParams = {
 interfaceId: number;
 minutes?: number;
@@ -202,6 +264,11 @@ export const GetBandwidthAggregateWindow = {
   '7d': '7d',
   '30d': '30d',
 } as const;
+
+export type GetNetwatchHistoryParams = {
+entryId: number;
+hours?: number;
+};
 
 export type GetPingHistoryParams = {
 deviceId: number;

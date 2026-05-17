@@ -18,6 +18,8 @@ tags:
     description: Interface monitoring management
   - name: bandwidth
     description: Bandwidth statistics
+  - name: netwatch
+    description: MikroTik Netwatch monitoring
   - name: ping
     description: Ping / latency monitoring
   - name: dashboard
@@ -353,6 +355,112 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BandwidthAggregate"
+
+  /netwatch:
+    get:
+      operationId: listNetwatchEntries
+      tags: [netwatch]
+      summary: List all Netwatch entries
+      responses:
+        "200":
+          description: List of Netwatch entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NetwatchEntry"
+    post:
+      operationId: addNetwatchEntry
+      tags: [netwatch]
+      summary: Add a new Netwatch entry to a MikroTik device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NetwatchEntryInput"
+      responses:
+        "201":
+          description: Entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetwatchEntry"
+
+  /netwatch/live:
+    get:
+      operationId: getNetwatchLive
+      tags: [netwatch]
+      summary: Get live Netwatch status from in-memory cache
+      responses:
+        "200":
+          description: Live Netwatch readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NetwatchEntry"
+
+  /netwatch/history:
+    get:
+      operationId: getNetwatchHistory
+      tags: [netwatch]
+      summary: Get Netwatch history for an entry
+      parameters:
+        - name: entryId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: hours
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 24
+      responses:
+        "200":
+          description: Netwatch history with stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetwatchHistoryResponse"
+
+  /netwatch/sync/{deviceId}:
+    post:
+      operationId: syncNetwatchEntries
+      tags: [netwatch]
+      summary: Sync Netwatch entries from a MikroTik device
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetwatchSyncResult"
+
+  /netwatch/{id}:
+    delete:
+      operationId: deleteNetwatchEntry
+      tags: [netwatch]
+      summary: Delete a Netwatch entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
 
   /ping/live:
     get:
@@ -716,3 +824,103 @@ components:
           type: number
         totalMbps:
           type: number
+
+    NetwatchEntry:
+      type: object
+      required: [id, deviceId, deviceName, mikrotikId, host, interval, type, status]
+      properties:
+        id:
+          type: integer
+        deviceId:
+          type: integer
+        deviceName:
+          type: string
+        mikrotikId:
+          type: string
+        host:
+          type: string
+        name:
+          type: ["string", "null"]
+        comment:
+          type: ["string", "null"]
+        interval:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        lastRttMs:
+          type: ["number", "null"]
+        rttMs:
+          type: ["number", "null"]
+        rttMinMs:
+          type: ["number", "null"]
+        rttMaxMs:
+          type: ["number", "null"]
+        lossPercent:
+          type: number
+        lastCheckedAt:
+          type: ["string", "null"]
+
+    NetwatchEntryInput:
+      type: object
+      required: [deviceId, host]
+      properties:
+        deviceId:
+          type: integer
+        host:
+          type: string
+        interval:
+          type: string
+          default: "00:00:10"
+        type:
+          type: string
+          default: "icmp"
+        comment:
+          type: string
+
+    NetwatchHistoryPoint:
+      type: object
+      required: [timestamp, status]
+      properties:
+        timestamp:
+          type: string
+        status:
+          type: string
+        rttMs:
+          type: ["number", "null"]
+
+    NetwatchStats:
+      type: object
+      required: [packetLoss]
+      properties:
+        minMs:
+          type: ["number", "null"]
+        maxMs:
+          type: ["number", "null"]
+        avgMs:
+          type: ["number", "null"]
+        packetLoss:
+          type: number
+
+    NetwatchHistoryResponse:
+      type: object
+      required: [points, stats]
+      properties:
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/NetwatchHistoryPoint"
+        stats:
+          $ref: "#/components/schemas/NetwatchStats"
+
+    NetwatchSyncResult:
+      type: object
+      required: [synced, added, updated]
+      properties:
+        synced:
+          type: integer
+        added:
+          type: integer
+        updated:
+          type: integer

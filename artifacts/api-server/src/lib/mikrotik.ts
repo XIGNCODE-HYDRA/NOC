@@ -106,6 +106,133 @@ export async function getInterfaces(
   }
 }
 
+/**
+ * Parse RouterOS RTT strings like "1ms100us", "500us", "2ms", "0s" into milliseconds.
+ * RouterOS may also return plain numeric strings (microseconds).
+ */
+function parseRttMs(raw: unknown): number | null {
+  if (raw == null || raw === "") return null;
+  const s = String(raw).trim();
+  if (s === "0" || s === "0s") return null;
+
+  // Plain numeric → microseconds
+  if (/^\d+$/.test(s)) {
+    const us = Number(s);
+    return us > 0 ? us / 1000 : null;
+  }
+
+  // e.g. "1ms100us", "200us", "3ms", "1s200ms"
+  let totalMs = 0;
+  const re = /(\d+(?:\.\d+)?)\s*(s|ms|us)/g;
+  let m: RegExpExecArray | null;
+  let found = false;
+  while ((m = re.exec(s)) !== null) {
+    found = true;
+    const val = parseFloat(m[1]);
+    switch (m[2]) {
+      case "s":  totalMs += val * 1000; break;
+      case "ms": totalMs += val; break;
+      case "us": totalMs += val / 1000; break;
+    }
+  }
+  return found && totalMs > 0 ? totalMs : null;
+}
+
+export interface NetwatchEntry {
+  mikrotikId: string;
+  host: string;
+  name?: string;
+  comment?: string;
+  interval: string;
+  type: string;
+  status: "up" | "down" | "unknown";
+  rttMs: number | null;
+  rttMinMs: number | null;
+  rttMaxMs: number | null;
+  lossPercent: number;
+}
+
+export async function getNetwatchEntries(
+  host: string,
+  port: number,
+  username: string,
+  password: string,
+): Promise<NetwatchEntry[]> {
+  const conn = safeConnect(host, port, username, password);
+  try {
+    await conn.connect();
+    const result = await conn.write("/tool/netwatch/print");
+    await conn.close();
+    return result.map((e: Record<string, unknown>) => ({
+      mikrotikId: String(e[".id"] ?? ""),
+      host: String(e["host"] ?? ""),
+      name: e["name"] ? String(e["name"]) : undefined,
+      comment: e["comment"] ? String(e["comment"]) : undefined,
+      interval: String(e["interval"] ?? "00:00:10"),
+      type: String(e["type"] ?? "icmp"),
+      status: e["status"] === "up" ? "up" : e["status"] === "down" ? "down" : "unknown",
+      rttMs: parseRttMs(e["rtt-avg"] ?? e["rtt"] ?? e["last-rtt"]),
+      rttMinMs: parseRttMs(e["rtt-min"]),
+      rttMaxMs: parseRttMs(e["rtt-max"]),
+      lossPercent: Number(e["loss-percent"] ?? 0),
+    }));
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn({ host, port, err: msg }, "Failed to fetch Netwatch entries");
+    try { await conn.close(); } catch { /* ignore */ }
+    return [];
+  }
+}
+
+export async function addNetwatchEntry(
+  host: string,
+  port: number,
+  username: string,
+  password: string,
+  params: { targetHost: string; interval: string; type: string; comment?: string },
+): Promise<string> {
+  const conn = safeConnect(host, port, username, password);
+  try {
+    await conn.connect();
+    const args = [
+      `=host=${params.targetHost}`,
+      `=interval=${params.interval}`,
+      `=type=${params.type}`,
+    ];
+    if (params.comment) args.push(`=comment=${params.comment}`);
+    await conn.write("/tool/netwatch/add", args);
+    // Fetch the newly created entry to get its .id
+    const result = await conn.write("/tool/netwatch/print", [`?host=${params.targetHost}`]);
+    await conn.close();
+    return String(result[result.length - 1]?.[".id"] ?? "");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn({ host, port, err: msg }, "Failed to add Netwatch entry");
+    try { await conn.close(); } catch { /* ignore */ }
+    throw new Error(`Failed to add Netwatch entry: ${msg}`);
+  }
+}
+
+export async function removeNetwatchEntry(
+  host: string,
+  port: number,
+  username: string,
+  password: string,
+  mikrotikId: string,
+): Promise<void> {
+  const conn = safeConnect(host, port, username, password);
+  try {
+    await conn.connect();
+    await conn.write("/tool/netwatch/remove", [`=.id=${mikrotikId}`]);
+    await conn.close();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn({ host, port, err: msg }, "Failed to remove Netwatch entry");
+    try { await conn.close(); } catch { /* ignore */ }
+    throw new Error(`Failed to remove Netwatch entry: ${msg}`);
+  }
+}
+
 export async function getBandwidth(
   host: string,
   port: number,

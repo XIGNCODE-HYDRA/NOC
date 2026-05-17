@@ -31,12 +31,17 @@ import type {
   DeviceUpdate,
   GetBandwidthAggregateParams,
   GetBandwidthHistoryParams,
+  GetNetwatchHistoryParams,
   GetPingHistoryParams,
   HealthStatus,
   LoginInput,
   MonitoredInterface,
   MonitoredInterfaceInput,
   MonitoredInterfaceUpdate,
+  NetwatchEntry,
+  NetwatchEntryInput,
+  NetwatchHistoryResponse,
+  NetwatchSyncResult,
   PingHistoryResponse,
   PingReading,
   RemoteInterface,
@@ -1399,6 +1404,455 @@ export function useGetBandwidthAggregate<TData = Awaited<ReturnType<typeof getBa
 
 
 
+
+export const getListNetwatchEntriesUrl = () => {
+
+
+
+
+  return `/api/netwatch`
+}
+
+/**
+ * @summary List all Netwatch entries
+ */
+export const listNetwatchEntries = async ( options?: RequestInit): Promise<NetwatchEntry[]> => {
+
+  return customFetch<NetwatchEntry[]>(getListNetwatchEntriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListNetwatchEntriesQueryKey = () => {
+    return [
+    `/api/netwatch`
+    ] as const;
+    }
+
+
+export const getListNetwatchEntriesQueryOptions = <TData = Awaited<ReturnType<typeof listNetwatchEntries>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNetwatchEntries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListNetwatchEntriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listNetwatchEntries>>> = ({ signal }) => listNetwatchEntries({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listNetwatchEntries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListNetwatchEntriesQueryResult = NonNullable<Awaited<ReturnType<typeof listNetwatchEntries>>>
+export type ListNetwatchEntriesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all Netwatch entries
+ */
+
+export function useListNetwatchEntries<TData = Awaited<ReturnType<typeof listNetwatchEntries>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNetwatchEntries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListNetwatchEntriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAddNetwatchEntryUrl = () => {
+
+
+
+
+  return `/api/netwatch`
+}
+
+/**
+ * @summary Add a new Netwatch entry to a MikroTik device
+ */
+export const addNetwatchEntry = async (netwatchEntryInput: NetwatchEntryInput, options?: RequestInit): Promise<NetwatchEntry> => {
+
+  return customFetch<NetwatchEntry>(getAddNetwatchEntryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      netwatchEntryInput,)
+  }
+);}
+
+
+
+
+export const getAddNetwatchEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addNetwatchEntry>>, TError,{data: BodyType<NetwatchEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addNetwatchEntry>>, TError,{data: BodyType<NetwatchEntryInput>}, TContext> => {
+
+const mutationKey = ['addNetwatchEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addNetwatchEntry>>, {data: BodyType<NetwatchEntryInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  addNetwatchEntry(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddNetwatchEntryMutationResult = NonNullable<Awaited<ReturnType<typeof addNetwatchEntry>>>
+    export type AddNetwatchEntryMutationBody = BodyType<NetwatchEntryInput>
+    export type AddNetwatchEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add a new Netwatch entry to a MikroTik device
+ */
+export const useAddNetwatchEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addNetwatchEntry>>, TError,{data: BodyType<NetwatchEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addNetwatchEntry>>,
+        TError,
+        {data: BodyType<NetwatchEntryInput>},
+        TContext
+      > => {
+      return useMutation(getAddNetwatchEntryMutationOptions(options));
+    }
+
+export const getGetNetwatchLiveUrl = () => {
+
+
+
+
+  return `/api/netwatch/live`
+}
+
+/**
+ * @summary Get live Netwatch status from in-memory cache
+ */
+export const getNetwatchLive = async ( options?: RequestInit): Promise<NetwatchEntry[]> => {
+
+  return customFetch<NetwatchEntry[]>(getGetNetwatchLiveUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNetwatchLiveQueryKey = () => {
+    return [
+    `/api/netwatch/live`
+    ] as const;
+    }
+
+
+export const getGetNetwatchLiveQueryOptions = <TData = Awaited<ReturnType<typeof getNetwatchLive>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNetwatchLive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNetwatchLiveQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNetwatchLive>>> = ({ signal }) => getNetwatchLive({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNetwatchLive>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNetwatchLiveQueryResult = NonNullable<Awaited<ReturnType<typeof getNetwatchLive>>>
+export type GetNetwatchLiveQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get live Netwatch status from in-memory cache
+ */
+
+export function useGetNetwatchLive<TData = Awaited<ReturnType<typeof getNetwatchLive>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNetwatchLive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNetwatchLiveQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetNetwatchHistoryUrl = (params: GetNetwatchHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/netwatch/history?${stringifiedParams}` : `/api/netwatch/history`
+}
+
+/**
+ * @summary Get Netwatch history for an entry
+ */
+export const getNetwatchHistory = async (params: GetNetwatchHistoryParams, options?: RequestInit): Promise<NetwatchHistoryResponse> => {
+
+  return customFetch<NetwatchHistoryResponse>(getGetNetwatchHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNetwatchHistoryQueryKey = (params?: GetNetwatchHistoryParams,) => {
+    return [
+    `/api/netwatch/history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetNetwatchHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getNetwatchHistory>>, TError = ErrorType<unknown>>(params: GetNetwatchHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNetwatchHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNetwatchHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNetwatchHistory>>> = ({ signal }) => getNetwatchHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNetwatchHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNetwatchHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getNetwatchHistory>>>
+export type GetNetwatchHistoryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get Netwatch history for an entry
+ */
+
+export function useGetNetwatchHistory<TData = Awaited<ReturnType<typeof getNetwatchHistory>>, TError = ErrorType<unknown>>(
+ params: GetNetwatchHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNetwatchHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNetwatchHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSyncNetwatchEntriesUrl = (deviceId: number,) => {
+
+
+
+
+  return `/api/netwatch/sync/${deviceId}`
+}
+
+/**
+ * @summary Sync Netwatch entries from a MikroTik device
+ */
+export const syncNetwatchEntries = async (deviceId: number, options?: RequestInit): Promise<NetwatchSyncResult> => {
+
+  return customFetch<NetwatchSyncResult>(getSyncNetwatchEntriesUrl(deviceId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSyncNetwatchEntriesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncNetwatchEntries>>, TError,{deviceId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncNetwatchEntries>>, TError,{deviceId: number}, TContext> => {
+
+const mutationKey = ['syncNetwatchEntries'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncNetwatchEntries>>, {deviceId: number}> = (props) => {
+          const {deviceId} = props ?? {};
+
+          return  syncNetwatchEntries(deviceId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncNetwatchEntriesMutationResult = NonNullable<Awaited<ReturnType<typeof syncNetwatchEntries>>>
+
+    export type SyncNetwatchEntriesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Sync Netwatch entries from a MikroTik device
+ */
+export const useSyncNetwatchEntries = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncNetwatchEntries>>, TError,{deviceId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncNetwatchEntries>>,
+        TError,
+        {deviceId: number},
+        TContext
+      > => {
+      return useMutation(getSyncNetwatchEntriesMutationOptions(options));
+    }
+
+export const getDeleteNetwatchEntryUrl = (id: number,) => {
+
+
+
+
+  return `/api/netwatch/${id}`
+}
+
+/**
+ * @summary Delete a Netwatch entry
+ */
+export const deleteNetwatchEntry = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteNetwatchEntryUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteNetwatchEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteNetwatchEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteNetwatchEntry>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteNetwatchEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteNetwatchEntry>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteNetwatchEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteNetwatchEntryMutationResult = NonNullable<Awaited<ReturnType<typeof deleteNetwatchEntry>>>
+
+    export type DeleteNetwatchEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a Netwatch entry
+ */
+export const useDeleteNetwatchEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteNetwatchEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteNetwatchEntry>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteNetwatchEntryMutationOptions(options));
+    }
 
 export const getGetPingLiveUrl = () => {
 

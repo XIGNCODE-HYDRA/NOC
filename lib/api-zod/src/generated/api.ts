@@ -272,6 +272,116 @@ export const GetBandwidthAggregateResponse = zod.array(GetBandwidthAggregateResp
 
 
 /**
+ * @summary List all Netwatch entries
+ */
+export const ListNetwatchEntriesResponseItem = zod.object({
+  "id": zod.number(),
+  "deviceId": zod.number(),
+  "deviceName": zod.string(),
+  "mikrotikId": zod.string(),
+  "host": zod.string(),
+  "name": zod.string().nullish(),
+  "comment": zod.string().nullish(),
+  "interval": zod.string(),
+  "type": zod.string(),
+  "status": zod.string(),
+  "lastRttMs": zod.number().nullish(),
+  "rttMs": zod.number().nullish(),
+  "rttMinMs": zod.number().nullish(),
+  "rttMaxMs": zod.number().nullish(),
+  "lossPercent": zod.number().optional(),
+  "lastCheckedAt": zod.string().nullish()
+})
+export const ListNetwatchEntriesResponse = zod.array(ListNetwatchEntriesResponseItem)
+
+
+/**
+ * @summary Add a new Netwatch entry to a MikroTik device
+ */
+export const addNetwatchEntryBodyIntervalDefault = `00:00:10`;
+export const addNetwatchEntryBodyTypeDefault = `icmp`;
+
+export const AddNetwatchEntryBody = zod.object({
+  "deviceId": zod.number(),
+  "host": zod.string(),
+  "interval": zod.string().default(addNetwatchEntryBodyIntervalDefault),
+  "type": zod.string().default(addNetwatchEntryBodyTypeDefault),
+  "comment": zod.string().optional()
+})
+
+
+/**
+ * @summary Get live Netwatch status from in-memory cache
+ */
+export const GetNetwatchLiveResponseItem = zod.object({
+  "id": zod.number(),
+  "deviceId": zod.number(),
+  "deviceName": zod.string(),
+  "mikrotikId": zod.string(),
+  "host": zod.string(),
+  "name": zod.string().nullish(),
+  "comment": zod.string().nullish(),
+  "interval": zod.string(),
+  "type": zod.string(),
+  "status": zod.string(),
+  "lastRttMs": zod.number().nullish(),
+  "rttMs": zod.number().nullish(),
+  "rttMinMs": zod.number().nullish(),
+  "rttMaxMs": zod.number().nullish(),
+  "lossPercent": zod.number().optional(),
+  "lastCheckedAt": zod.string().nullish()
+})
+export const GetNetwatchLiveResponse = zod.array(GetNetwatchLiveResponseItem)
+
+
+/**
+ * @summary Get Netwatch history for an entry
+ */
+export const getNetwatchHistoryQueryHoursDefault = 24;
+
+export const GetNetwatchHistoryQueryParams = zod.object({
+  "entryId": zod.coerce.number(),
+  "hours": zod.coerce.number().default(getNetwatchHistoryQueryHoursDefault)
+})
+
+export const GetNetwatchHistoryResponse = zod.object({
+  "points": zod.array(zod.object({
+  "timestamp": zod.string(),
+  "status": zod.string(),
+  "rttMs": zod.number().nullish()
+})),
+  "stats": zod.object({
+  "minMs": zod.number().nullish(),
+  "maxMs": zod.number().nullish(),
+  "avgMs": zod.number().nullish(),
+  "packetLoss": zod.number()
+})
+})
+
+
+/**
+ * @summary Sync Netwatch entries from a MikroTik device
+ */
+export const SyncNetwatchEntriesParams = zod.object({
+  "deviceId": zod.coerce.number()
+})
+
+export const SyncNetwatchEntriesResponse = zod.object({
+  "synced": zod.number(),
+  "added": zod.number(),
+  "updated": zod.number()
+})
+
+
+/**
+ * @summary Delete a Netwatch entry
+ */
+export const DeleteNetwatchEntryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary Get current ping status for all devices
  */
 export const GetPingLiveResponseItem = zod.object({

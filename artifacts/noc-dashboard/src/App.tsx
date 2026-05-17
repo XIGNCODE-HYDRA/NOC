@@ -14,6 +14,7 @@ import Devices from "@/pages/devices";
 import Interfaces from "@/pages/interfaces";
 import Bandwidth from "@/pages/bandwidth";
 import Ping from "@/pages/ping";
+import Netwatch from "@/pages/netwatch";
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ function Router() {
         <ProtectedRoute path="/interfaces" component={Interfaces} />
         <ProtectedRoute path="/bandwidth/:interfaceId" component={Bandwidth} />
         <ProtectedRoute path="/ping" component={Ping} />
+        <ProtectedRoute path="/netwatch" component={Netwatch} />
         <Route component={NotFound} />
       </Switch>
     </AnimatePresence>

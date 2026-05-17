@@ -1,7 +1,7 @@
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { useLogout, useHealthCheck } from "@workspace/api-client-react";
-import { Activity, Server, Network, LayoutDashboard, LogOut, Loader2, Menu, Radio } from "lucide-react";
+import { Activity, Server, Network, LayoutDashboard, LogOut, Loader2, Menu, Radio, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,6 +31,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/devices", label: "Devices", icon: Server },
     { href: "/interfaces", label: "Interfaces", icon: Network },
     { href: "/ping", label: "Ping Monitor", icon: Radio },
+    { href: "/netwatch", label: "Netwatch", icon: Eye },
   ];
 
   return (
