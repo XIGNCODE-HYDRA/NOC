@@ -16,7 +16,7 @@ router.use(requireAuth);
 const liveCache = new Map<number, { rxBps: number; txBps: number; timestamp: string }>();
 // Low-bandwidth thresholds (Mbps)
 const LOW_RX_MBPS = 0.8; // download
-const LOW_TX_MBPS = 0.5; // upload
+const LOW_TX_MBPS = 0.2; // upload
 // Track low-bandwidth state per direction separately (transition-only events)
 const lowRxState = new Map<number, boolean>();
 const lowTxState = new Map<number, boolean>();
