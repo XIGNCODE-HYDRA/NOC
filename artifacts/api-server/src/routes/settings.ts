@@ -13,22 +13,26 @@ router.use(requireAuth);
 const UPLOADS_DIR = path.join(__dirname, "../../uploads");
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const logoStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || ".png";
-    cb(null, `logo${ext}`);
-  },
-});
+function makeImageUpload(prefix: string) {
+  const storage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || ".png";
+      cb(null, `${prefix}${ext}`);
+    },
+  });
+  return multer({
+    storage,
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype.startsWith("image/")) cb(null, true);
+      else cb(new Error("Only image files are allowed"));
+    },
+  });
+}
 
-const logoUpload = multer({
-  storage: logoStorage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) cb(null, true);
-    else cb(new Error("Only image files are allowed"));
-  },
-});
+const logoUpload = makeImageUpload("logo");
+const faviconUpload = makeImageUpload("favicon");
 
 async function getSettings() {
   const rows = await db.select().from(settingsTable).where(eq(settingsTable.id, 1)).limit(1);
@@ -42,6 +46,7 @@ router.get("/settings", async (_req, res): Promise<void> => {
     telegramChatId: settings?.telegramChatId ?? null,
     telegramEnabled: !!(settings?.telegramBotToken && settings?.telegramChatId),
     logoUrl: settings?.logoFilename ? `/api/uploads/${settings.logoFilename}` : null,
+    faviconUrl: settings?.faviconFilename ? `/api/uploads/${settings.faviconFilename}` : null,
   });
 });
 
@@ -134,6 +139,37 @@ router.delete("/settings/logo", requireAdmin, async (_req, res): Promise<void> =
     try { fs.unlinkSync(filepath); } catch { /* already gone */ }
   }
   await db.update(settingsTable).set({ logoFilename: null }).where(eq(settingsTable.id, 1));
+  res.json({ ok: true });
+});
+
+router.post("/settings/favicon", requireAdmin, (req, res): void => {
+  faviconUpload.single("favicon")(req, res, async (err) => {
+    if (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : "Upload failed" });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: "No file uploaded" });
+      return;
+    }
+    const filename = req.file.filename;
+    const existing = await getSettings();
+    if (existing) {
+      await db.update(settingsTable).set({ faviconFilename: filename }).where(eq(settingsTable.id, 1));
+    } else {
+      await db.insert(settingsTable).values({ id: 1, faviconFilename: filename });
+    }
+    res.json({ ok: true, faviconUrl: `/api/uploads/${filename}` });
+  });
+});
+
+router.delete("/settings/favicon", requireAdmin, async (_req, res): Promise<void> => {
+  const settings = await getSettings();
+  if (settings?.faviconFilename) {
+    const filepath = path.join(UPLOADS_DIR, settings.faviconFilename);
+    try { fs.unlinkSync(filepath); } catch { /* already gone */ }
+  }
+  await db.update(settingsTable).set({ faviconFilename: null }).where(eq(settingsTable.id, 1));
   res.json({ ok: true });
 });
 

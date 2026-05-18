@@ -64,7 +64,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetch("/api/settings", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
-      .then((d: { logoUrl?: string | null } | null) => { if (d?.logoUrl) setLogoUrl(d.logoUrl); })
+      .then((d: { logoUrl?: string | null; faviconUrl?: string | null } | null) => {
+        if (d?.logoUrl) setLogoUrl(d.logoUrl);
+        if (d?.faviconUrl) {
+          const link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+          if (link) {
+            link.href = d.faviconUrl;
+            link.type = "image/png";
+          }
+        }
+      })
       .catch(() => {});
   }, []);
 

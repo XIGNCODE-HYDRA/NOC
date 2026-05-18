@@ -99,129 +99,139 @@ function ChangePasswordCard() {
   );
 }
 
-// ─── Logo Upload ──────────────────────────────────────────────────────────────
-function LogoCard() {
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [removing, setRemoving] = useState(false);
+// ─── Branding (Logo + Favicon) ────────────────────────────────────────────────
+interface BrandingState {
+  url: string | null;
+  uploading: boolean;
+  removing: boolean;
+}
+
+function BrandingItem({
+  label,
+  hint,
+  field,
+  uploadEndpoint,
+  deleteEndpoint,
+  previewClass,
+}: {
+  label: string;
+  hint: string;
+  field: "logoUrl" | "faviconUrl";
+  uploadEndpoint: string;
+  deleteEndpoint: string;
+  previewClass: string;
+}) {
+  const [state, setState] = useState<BrandingState>({ url: null, uploading: false, removing: false });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchLogo = async () => {
-    try {
-      const res = await fetch("/api/settings", { credentials: "include" });
-      if (!res.ok) return;
-      const data = await res.json() as { logoUrl?: string | null };
-      setLogoUrl(data.logoUrl ?? null);
-    } catch { /* ignore */ }
-  };
+  useEffect(() => {
+    fetch("/api/settings", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: Record<string, string | null> | null) => {
+        if (d?.[field]) setState(s => ({ ...s, url: d[field] as string }));
+      })
+      .catch(() => {});
+  }, [field]);
 
-  useEffect(() => { void fetchLogo(); }, []);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
     if (file.size > 2 * 1024 * 1024) { toast.error("Image must be under 2 MB"); return; }
-
-    setUploading(true);
+    setState(s => ({ ...s, uploading: true }));
     try {
       const form = new FormData();
-      form.append("logo", file);
-      const res = await fetch("/api/settings/logo", {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      const data = await res.json() as { ok?: boolean; logoUrl?: string; error?: string };
+      form.append(field === "logoUrl" ? "logo" : "favicon", file);
+      const res = await fetch(uploadEndpoint, { method: "POST", credentials: "include", body: form });
+      const data = await res.json() as { ok?: boolean; logoUrl?: string; faviconUrl?: string; error?: string };
       if (!res.ok) { toast.error(data.error ?? "Upload failed"); return; }
-      setLogoUrl(data.logoUrl ?? null);
-      toast.success("Logo updated — refresh to see it in the sidebar");
+      const newUrl = (data.logoUrl ?? data.faviconUrl) as string;
+      setState(s => ({ ...s, url: newUrl }));
+      toast.success(`${label} updated`);
+      // Apply favicon live without full page reload
+      if (field === "faviconUrl") {
+        const link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+        if (link) { link.href = newUrl; link.type = "image/png"; }
+      }
     } catch { toast.error("Network error"); }
     finally {
-      setUploading(false);
+      setState(s => ({ ...s, uploading: false }));
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const handleRemove = async () => {
-    if (!confirm("Remove the custom logo? The default text will be shown.")) return;
-    setRemoving(true);
+    if (!confirm(`Remove the custom ${label.toLowerCase()}?`)) return;
+    setState(s => ({ ...s, removing: true }));
     try {
-      const res = await fetch("/api/settings/logo", { method: "DELETE", credentials: "include" });
-      if (!res.ok) { toast.error("Failed to remove logo"); return; }
-      setLogoUrl(null);
-      toast.success("Logo removed");
+      const res = await fetch(deleteEndpoint, { method: "DELETE", credentials: "include" });
+      if (!res.ok) { toast.error("Failed to remove"); return; }
+      setState(s => ({ ...s, url: null }));
+      toast.success(`${label} removed`);
     } catch { toast.error("Network error"); }
-    finally { setRemoving(false); }
+    finally { setState(s => ({ ...s, removing: false })); }
   };
 
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">{label}</p>
+      <p className="text-[11px] font-mono text-muted-foreground">{hint}</p>
+      {state.url ? (
+        <div className="flex items-center gap-3 p-3 rounded border border-primary/20 bg-background/40">
+          <img src={state.url} alt={label} className={`object-contain ${previewClass}`} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-mono text-green-400">Active</p>
+          </div>
+          <div className="flex gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={state.uploading}
+              className="font-mono text-xs border-primary/30 text-primary hover:bg-primary/10 h-7 px-2">
+              {state.uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageUp className="h-3 w-3" />}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleRemove} disabled={state.removing}
+              className="font-mono text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 h-7 px-2">
+              {state.removing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={state.uploading}
+          className="font-mono text-xs border-primary/30 text-primary hover:bg-primary/10 h-8">
+          {state.uploading ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <ImageUp className="h-3 w-3 mr-1.5" />}
+          Choose Image
+        </Button>
+      )}
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+    </div>
+  );
+}
+
+function LogoCard() {
   return (
     <Card className="bg-card/60 backdrop-blur-sm border-primary/20">
       <CardHeader>
         <CardTitle className="text-sm font-mono font-medium text-primary uppercase tracking-widest flex items-center gap-2">
-          <ImageUp className="h-4 w-4" /> Sidebar Logo
+          <ImageUp className="h-4 w-4" /> Branding
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-xs font-mono text-muted-foreground leading-relaxed">
-          Upload your own logo to replace the default "NOC MONITOR" text in the sidebar. PNG, SVG, or JPEG — max 2 MB.
-        </p>
-
-        {logoUrl ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-4 p-3 rounded border border-primary/20 bg-background/40">
-              <img
-                src={logoUrl}
-                alt="Current logo"
-                className="h-10 max-w-[160px] object-contain"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-mono text-green-400">Custom logo active</p>
-                <p className="text-[10px] font-mono text-muted-foreground mt-0.5">Visible in the sidebar header</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="font-mono text-xs border-primary/30 text-primary hover:bg-primary/10 h-8"
-              >
-                {uploading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ImageUp className="h-3 w-3 mr-1" />}
-                Replace
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleRemove}
-                disabled={removing}
-                className="font-mono text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 h-8"
-              >
-                {removing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Trash2 className="h-3 w-3 mr-1" />}
-                Remove
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="font-mono text-xs border-primary/30 text-primary hover:bg-primary/10 w-full max-w-xs h-9"
-          >
-            {uploading ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <ImageUp className="h-3 w-3 mr-2" />}
-            Choose Logo Image
-          </Button>
-        )}
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileChange}
+      <CardContent className="space-y-6">
+        <BrandingItem
+          label="Sidebar Logo"
+          hint='Replaces the "NOC MONITOR" text in the sidebar. PNG, SVG, or JPEG — max 2 MB.'
+          field="logoUrl"
+          uploadEndpoint="/api/settings/logo"
+          deleteEndpoint="/api/settings/logo"
+          previewClass="h-9 max-w-[160px]"
         />
+        <div className="border-t border-primary/10 pt-4">
+          <BrandingItem
+            label="Browser Tab Icon (Favicon)"
+            hint="Replaces the red square shown in the browser tab. PNG or ICO recommended — max 2 MB."
+            field="faviconUrl"
+            uploadEndpoint="/api/settings/favicon"
+            deleteEndpoint="/api/settings/favicon"
+            previewClass="h-8 w-8"
+          />
+        </div>
       </CardContent>
     </Card>
   );
