@@ -15,6 +15,9 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "$APP_DIR"
 
+# Fix Git "dubious ownership" error when running as root over www-data owned files
+git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+
 info "Pulling latest code..."
 git pull
 
