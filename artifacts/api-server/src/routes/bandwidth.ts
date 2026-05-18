@@ -17,11 +17,18 @@ const liveCache = new Map<number, { rxBps: number; txBps: number; timestamp: str
 // Low-bandwidth thresholds (Mbps)
 const LOW_RX_MBPS = 0.8; // download
 const LOW_TX_MBPS = 0.2; // upload
+// How many consecutive polls a condition must hold before firing an event.
+// Prevents transient 0-readings from the RouterOS API triggering false alarms.
+const CONSECUTIVE_REQUIRED = 2;
 // Track low-bandwidth state per direction separately (transition-only events)
 const lowRxState = new Map<number, boolean>();
 const lowTxState = new Map<number, boolean>();
 // Track 0-Mbps (system down) state per direction: key = `${id}-rx` or `${id}-tx`
 const zeroState = new Map<string, boolean>();
+// Consecutive-poll counters — incremented while condition holds, reset when it clears
+const zeroConsecutive  = new Map<string, number>();
+const lowRxConsecutive = new Map<number, number>();
+const lowTxConsecutive = new Map<number, number>();
 
 // Background poller - runs every 5 seconds
 async function pollBandwidth(): Promise<void> {
@@ -54,98 +61,141 @@ async function pollBandwidth(): Promise<void> {
           timestamp: new Date().toISOString(),
         });
 
-        // Low-bandwidth event detection — separate RX (download) and TX (upload) thresholds
+        // ── Event detection with debounce ────────────────────────────────────
+        // A condition must be true for CONSECUTIVE_REQUIRED polls in a row
+        // before firing an alert — prevents transient 0-readings from the
+        // RouterOS API from creating false-positive events.
         const rxMbps = stats.rxBps / 1_000_000;
         const txMbps = stats.txBps / 1_000_000;
         const ifaceName = iface.alias || iface.interfaceName;
 
-        const rxWasLow = lowRxState.get(iface.id);
-        const rxIsLow = rxMbps < LOW_RX_MBPS && stats.rxBps > 0;
-        if (rxIsLow && rxWasLow === false) {
-          logEvent({
-            type: "low_bandwidth",
-            message: `${ifaceName} — DOWNLOAD below ${LOW_RX_MBPS} Mbps (${rxMbps.toFixed(3)} Mbps)`,
-            deviceName: iface.deviceName ?? undefined,
-            host: iface.host,
-            interfaceName: ifaceName,
-          }).catch(() => {});
-        } else if (!rxIsLow && rxWasLow === true) {
-          logEvent({
-            type: "recovery",
-            message: `${ifaceName} — DOWNLOAD recovered (${rxMbps.toFixed(2)} Mbps)`,
-            deviceName: iface.deviceName ?? undefined,
-            host: iface.host,
-            interfaceName: ifaceName,
-          }).catch(() => {});
-        }
-        lowRxState.set(iface.id, rxIsLow);
-
-        const txWasLow = lowTxState.get(iface.id);
-        const txIsLow = txMbps < LOW_TX_MBPS && stats.txBps > 0;
-        if (txIsLow && txWasLow === false) {
-          logEvent({
-            type: "low_bandwidth",
-            message: `${ifaceName} — UPLOAD below ${LOW_TX_MBPS} Mbps (${txMbps.toFixed(3)} Mbps)`,
-            deviceName: iface.deviceName ?? undefined,
-            host: iface.host,
-            interfaceName: ifaceName,
-          }).catch(() => {});
-        } else if (!txIsLow && txWasLow === true) {
-          logEvent({
-            type: "recovery",
-            message: `${ifaceName} — UPLOAD recovered (${txMbps.toFixed(2)} Mbps)`,
-            deviceName: iface.deviceName ?? undefined,
-            host: iface.host,
-            interfaceName: ifaceName,
-          }).catch(() => {});
-        }
-        lowTxState.set(iface.id, txIsLow);
-
-        // System-down event: RX or TX is exactly 0 bps (transition only)
+        // ── Zero / system-down (RX) ──────────────────────────────────────────
         const rxKey = `${iface.id}-rx`;
-        const txKey = `${iface.id}-tx`;
-        const rxWasZero = zeroState.get(rxKey);
-        const txWasZero = zeroState.get(txKey);
         const rxIsZero = stats.rxBps === 0;
+        const rxWasZero = zeroState.get(rxKey);
+
+        if (rxIsZero) {
+          const count = (zeroConsecutive.get(rxKey) ?? 0) + 1;
+          zeroConsecutive.set(rxKey, count);
+          // Fire alert only on the exact poll that crosses the threshold
+          if (count === CONSECUTIVE_REQUIRED && rxWasZero === false) {
+            logEvent({
+              type: "system_down",
+              message: `${ifaceName} — DOWNLOAD is 0 Mbps (link may be down)`,
+              deviceName: iface.deviceName ?? undefined,
+              host: iface.host,
+              interfaceName: ifaceName,
+            }).catch(() => {});
+            zeroState.set(rxKey, true);
+          }
+        } else {
+          zeroConsecutive.set(rxKey, 0);
+          if (rxWasZero === true) {
+            logEvent({
+              type: "recovery",
+              message: `${ifaceName} — DOWNLOAD restored (${rxMbps.toFixed(2)} Mbps)`,
+              deviceName: iface.deviceName ?? undefined,
+              host: iface.host,
+              interfaceName: ifaceName,
+            }).catch(() => {});
+          }
+          zeroState.set(rxKey, false);
+        }
+
+        // ── Zero / system-down (TX) ──────────────────────────────────────────
+        const txKey = `${iface.id}-tx`;
         const txIsZero = stats.txBps === 0;
+        const txWasZero = zeroState.get(txKey);
 
-        if (rxIsZero && rxWasZero === false) {
-          logEvent({
-            type: "system_down",
-            message: `${iface.alias || iface.interfaceName} — DOWNLOAD is 0 Mbps (link may be down)`,
-            deviceName: iface.deviceName ?? undefined,
-            host: iface.host,
-            interfaceName: iface.alias || iface.interfaceName,
-          }).catch(() => {});
-        } else if (!rxIsZero && rxWasZero === true) {
-          logEvent({
-            type: "recovery",
-            message: `${iface.alias || iface.interfaceName} — DOWNLOAD restored (${(stats.rxBps / 1_000_000).toFixed(2)} Mbps)`,
-            deviceName: iface.deviceName ?? undefined,
-            host: iface.host,
-            interfaceName: iface.alias || iface.interfaceName,
-          }).catch(() => {});
+        if (txIsZero) {
+          const count = (zeroConsecutive.get(txKey) ?? 0) + 1;
+          zeroConsecutive.set(txKey, count);
+          if (count === CONSECUTIVE_REQUIRED && txWasZero === false) {
+            logEvent({
+              type: "system_down",
+              message: `${ifaceName} — UPLOAD is 0 Mbps (link may be down)`,
+              deviceName: iface.deviceName ?? undefined,
+              host: iface.host,
+              interfaceName: ifaceName,
+            }).catch(() => {});
+            zeroState.set(txKey, true);
+          }
+        } else {
+          zeroConsecutive.set(txKey, 0);
+          if (txWasZero === true) {
+            logEvent({
+              type: "recovery",
+              message: `${ifaceName} — UPLOAD restored (${txMbps.toFixed(2)} Mbps)`,
+              deviceName: iface.deviceName ?? undefined,
+              host: iface.host,
+              interfaceName: ifaceName,
+            }).catch(() => {});
+          }
+          zeroState.set(txKey, false);
         }
-        zeroState.set(rxKey, rxIsZero);
 
-        if (txIsZero && txWasZero === false) {
-          logEvent({
-            type: "system_down",
-            message: `${iface.alias || iface.interfaceName} — UPLOAD is 0 Mbps (link may be down)`,
-            deviceName: iface.deviceName ?? undefined,
-            host: iface.host,
-            interfaceName: iface.alias || iface.interfaceName,
-          }).catch(() => {});
-        } else if (!txIsZero && txWasZero === true) {
-          logEvent({
-            type: "recovery",
-            message: `${iface.alias || iface.interfaceName} — UPLOAD restored (${(stats.txBps / 1_000_000).toFixed(2)} Mbps)`,
-            deviceName: iface.deviceName ?? undefined,
-            host: iface.host,
-            interfaceName: iface.alias || iface.interfaceName,
-          }).catch(() => {});
+        // ── Low-bandwidth (RX download) ──────────────────────────────────────
+        // Exclude 0-bps from low-bw check (handled above by zero-state)
+        const rxIsLow = rxMbps < LOW_RX_MBPS && stats.rxBps > 0;
+        const rxWasLow = lowRxState.get(iface.id);
+
+        if (rxIsLow) {
+          const count = (lowRxConsecutive.get(iface.id) ?? 0) + 1;
+          lowRxConsecutive.set(iface.id, count);
+          if (count === CONSECUTIVE_REQUIRED && rxWasLow === false) {
+            logEvent({
+              type: "low_bandwidth",
+              message: `${ifaceName} — DOWNLOAD below ${LOW_RX_MBPS} Mbps (${rxMbps.toFixed(3)} Mbps)`,
+              deviceName: iface.deviceName ?? undefined,
+              host: iface.host,
+              interfaceName: ifaceName,
+            }).catch(() => {});
+            lowRxState.set(iface.id, true);
+          }
+        } else {
+          lowRxConsecutive.set(iface.id, 0);
+          if (rxWasLow === true) {
+            logEvent({
+              type: "recovery",
+              message: `${ifaceName} — DOWNLOAD recovered (${rxMbps.toFixed(2)} Mbps)`,
+              deviceName: iface.deviceName ?? undefined,
+              host: iface.host,
+              interfaceName: ifaceName,
+            }).catch(() => {});
+          }
+          lowRxState.set(iface.id, false);
         }
-        zeroState.set(txKey, txIsZero);
+
+        // ── Low-bandwidth (TX upload) ────────────────────────────────────────
+        const txIsLow = txMbps < LOW_TX_MBPS && stats.txBps > 0;
+        const txWasLow = lowTxState.get(iface.id);
+
+        if (txIsLow) {
+          const count = (lowTxConsecutive.get(iface.id) ?? 0) + 1;
+          lowTxConsecutive.set(iface.id, count);
+          if (count === CONSECUTIVE_REQUIRED && txWasLow === false) {
+            logEvent({
+              type: "low_bandwidth",
+              message: `${ifaceName} — UPLOAD below ${LOW_TX_MBPS} Mbps (${txMbps.toFixed(3)} Mbps)`,
+              deviceName: iface.deviceName ?? undefined,
+              host: iface.host,
+              interfaceName: ifaceName,
+            }).catch(() => {});
+            lowTxState.set(iface.id, true);
+          }
+        } else {
+          lowTxConsecutive.set(iface.id, 0);
+          if (txWasLow === true) {
+            logEvent({
+              type: "recovery",
+              message: `${ifaceName} — UPLOAD recovered (${txMbps.toFixed(2)} Mbps)`,
+              deviceName: iface.deviceName ?? undefined,
+              host: iface.host,
+              interfaceName: ifaceName,
+            }).catch(() => {});
+          }
+          lowTxState.set(iface.id, false);
+        }
 
         // Store in history
         await db.insert(bandwidthHistoryTable).values({
