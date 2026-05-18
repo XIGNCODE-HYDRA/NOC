@@ -32,10 +32,29 @@ const liveCache = new Map<number, LiveEntry>();
 // Track previous status per entry for event detection (entryId -> "up"|"down"|"unknown")
 const prevStatus = new Map<number, string>();
 
+// ─── Cache helpers ────────────────────────────────────────────────────────────
+export function purgeDeviceFromLiveCache(deviceId: number): void {
+  for (const [id, entry] of liveCache) {
+    if (entry.deviceId === deviceId) {
+      liveCache.delete(id);
+      prevStatus.delete(id);
+    }
+  }
+}
+
 // ─── Poller ───────────────────────────────────────────────────────────────────
 async function pollNetwatch(): Promise<void> {
   try {
     const devices = await db.select().from(devicesTable);
+
+    // Purge liveCache entries for devices that no longer exist
+    const validDeviceIds = new Set(devices.map(d => d.id));
+    for (const [id, entry] of liveCache) {
+      if (!validDeviceIds.has(entry.deviceId)) {
+        liveCache.delete(id);
+        prevStatus.delete(id);
+      }
+    }
 
     for (const device of devices) {
       let password: string;

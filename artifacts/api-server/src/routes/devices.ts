@@ -13,6 +13,7 @@ import {
 import { requireAuth } from "../middlewares/auth";
 import { encryptPassword, decryptPassword } from "../lib/crypto";
 import { testConnection, getInterfaces } from "../lib/mikrotik";
+import { purgeDeviceFromLiveCache } from "./netwatch";
 
 const router = Router();
 
@@ -136,6 +137,7 @@ router.delete("/devices/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Device not found" });
     return;
   }
+  purgeDeviceFromLiveCache(params.data.id);
   res.sendStatus(204);
 });
 
