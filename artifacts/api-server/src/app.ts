@@ -11,10 +11,6 @@ if (!process.env.SESSION_SECRET) {
 
 const app: Express = express();
 
-// Trust the first proxy (Nginx terminates SSL; Express needs this to see HTTPS
-// via X-Forwarded-Proto so that secure session cookies work in production)
-app.set("trust proxy", 1);
-
 app.use(
   pinoHttp({
     logger,
