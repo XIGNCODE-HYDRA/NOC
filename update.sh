@@ -19,7 +19,8 @@ cd "$APP_DIR"
 git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
 
 info "Pulling latest code..."
-git pull
+git fetch origin
+git reset --hard origin/main
 
 info "Installing dependencies..."
 pnpm install --frozen-lockfile --reporter=silent
