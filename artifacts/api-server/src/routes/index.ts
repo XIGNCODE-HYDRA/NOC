@@ -9,6 +9,7 @@ import pingRouter from "./ping";
 import netwatchRouter from "./netwatch";
 import eventsRouter from "./events";
 import usersRouter from "./users";
+import settingsRouter from "./settings";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(pingRouter);
 router.use(netwatchRouter);
 router.use(eventsRouter);
 router.use(usersRouter);
+router.use(settingsRouter);
 
 export default router;
