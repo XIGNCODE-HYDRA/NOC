@@ -17,9 +17,12 @@ const liveCache = new Map<number, { rxBps: number; txBps: number; timestamp: str
 // Low-bandwidth thresholds (Mbps)
 const LOW_RX_MBPS = 0.8; // download
 const LOW_TX_MBPS = 0.2; // upload
-// How many consecutive polls a condition must hold before firing an event.
-// Prevents transient 0-readings from the RouterOS API triggering false alarms.
-const CONSECUTIVE_REQUIRED = 2;
+// Polls before firing a system_down (0 bps) event.
+// Poll interval = 5 s, so 1 = fires after 5 s of sustained zero.
+const ZERO_CONSECUTIVE_REQUIRED = 1;
+// Polls before firing a low_bandwidth event (debounce transient dips).
+// 2 polls = 10 s of sustained low bandwidth before alerting.
+const LOW_CONSECUTIVE_REQUIRED = 2;
 // Track low-bandwidth state per direction separately (transition-only events)
 const lowRxState = new Map<number, boolean>();
 const lowTxState = new Map<number, boolean>();
@@ -78,7 +81,7 @@ async function pollBandwidth(): Promise<void> {
           const count = (zeroConsecutive.get(rxKey) ?? 0) + 1;
           zeroConsecutive.set(rxKey, count);
           // Fire alert only on the exact poll that crosses the threshold
-          if (count === CONSECUTIVE_REQUIRED && rxWasZero === false) {
+          if (count === ZERO_CONSECUTIVE_REQUIRED && rxWasZero === false) {
             logEvent({
               type: "system_down",
               message: `${ifaceName} — DOWNLOAD is 0 Mbps (link may be down)`,
@@ -110,7 +113,7 @@ async function pollBandwidth(): Promise<void> {
         if (txIsZero) {
           const count = (zeroConsecutive.get(txKey) ?? 0) + 1;
           zeroConsecutive.set(txKey, count);
-          if (count === CONSECUTIVE_REQUIRED && txWasZero === false) {
+          if (count === ZERO_CONSECUTIVE_REQUIRED && txWasZero === false) {
             logEvent({
               type: "system_down",
               message: `${ifaceName} — UPLOAD is 0 Mbps (link may be down)`,
@@ -142,7 +145,7 @@ async function pollBandwidth(): Promise<void> {
         if (rxIsLow) {
           const count = (lowRxConsecutive.get(iface.id) ?? 0) + 1;
           lowRxConsecutive.set(iface.id, count);
-          if (count === CONSECUTIVE_REQUIRED && rxWasLow === false) {
+          if (count === LOW_CONSECUTIVE_REQUIRED && rxWasLow === false) {
             logEvent({
               type: "low_bandwidth",
               message: `${ifaceName} — DOWNLOAD below ${LOW_RX_MBPS} Mbps (${rxMbps.toFixed(3)} Mbps)`,
@@ -173,7 +176,7 @@ async function pollBandwidth(): Promise<void> {
         if (txIsLow) {
           const count = (lowTxConsecutive.get(iface.id) ?? 0) + 1;
           lowTxConsecutive.set(iface.id, count);
-          if (count === CONSECUTIVE_REQUIRED && txWasLow === false) {
+          if (count === LOW_CONSECUTIVE_REQUIRED && txWasLow === false) {
             logEvent({
               type: "low_bandwidth",
               message: `${ifaceName} — UPLOAD below ${LOW_TX_MBPS} Mbps (${txMbps.toFixed(3)} Mbps)`,
