@@ -59,6 +59,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const lastSeenRef = useRef<string | null>(null);
 
   const { data: health } = useHealthCheck({ query: { refetchInterval: 10000 } });
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { logoUrl?: string | null } | null) => { if (d?.logoUrl) setLogoUrl(d.logoUrl); })
+      .catch(() => {});
+  }, []);
 
   const isAdmin = user?.role === "admin";
 
@@ -130,10 +138,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
           >
             {/* Logo */}
             <div className="h-16 flex items-center px-4 border-b border-primary/20 bg-background/50">
-              <Activity className="h-6 w-6 text-primary mr-2" />
-              <span className="font-mono font-bold text-lg text-primary glow-text tracking-wider">
-                NOC MONITOR
-              </span>
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="NOC Logo"
+                  className="h-9 max-w-[180px] object-contain"
+                  onError={() => setLogoUrl(null)}
+                />
+              ) : (
+                <>
+                  <Activity className="h-6 w-6 text-primary mr-2" />
+                  <span className="font-mono font-bold text-lg text-primary glow-text tracking-wider">
+                    NOC MONITOR
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Navigation */}

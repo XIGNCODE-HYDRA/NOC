@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Shield, Users, KeyRound, Trash2, UserPlus, Loader2, CheckCircle2, AlertCircle, Send, BotMessageSquare } from "lucide-react";
+import { Settings, Shield, Users, KeyRound, Trash2, UserPlus, Loader2, CheckCircle2, Send, BotMessageSquare, ImageUp } from "lucide-react";
 import { toast } from "sonner";
 
 interface UserAccount {
@@ -94,6 +94,134 @@ function ChangePasswordCard() {
             Update Password
           </Button>
         </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Logo Upload ──────────────────────────────────────────────────────────────
+function LogoCard() {
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchLogo = async () => {
+    try {
+      const res = await fetch("/api/settings", { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json() as { logoUrl?: string | null };
+      setLogoUrl(data.logoUrl ?? null);
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => { void fetchLogo(); }, []);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Image must be under 2 MB"); return; }
+
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("logo", file);
+      const res = await fetch("/api/settings/logo", {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const data = await res.json() as { ok?: boolean; logoUrl?: string; error?: string };
+      if (!res.ok) { toast.error(data.error ?? "Upload failed"); return; }
+      setLogoUrl(data.logoUrl ?? null);
+      toast.success("Logo updated — refresh to see it in the sidebar");
+    } catch { toast.error("Network error"); }
+    finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!confirm("Remove the custom logo? The default text will be shown.")) return;
+    setRemoving(true);
+    try {
+      const res = await fetch("/api/settings/logo", { method: "DELETE", credentials: "include" });
+      if (!res.ok) { toast.error("Failed to remove logo"); return; }
+      setLogoUrl(null);
+      toast.success("Logo removed");
+    } catch { toast.error("Network error"); }
+    finally { setRemoving(false); }
+  };
+
+  return (
+    <Card className="bg-card/60 backdrop-blur-sm border-primary/20">
+      <CardHeader>
+        <CardTitle className="text-sm font-mono font-medium text-primary uppercase tracking-widest flex items-center gap-2">
+          <ImageUp className="h-4 w-4" /> Sidebar Logo
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs font-mono text-muted-foreground leading-relaxed">
+          Upload your own logo to replace the default "NOC MONITOR" text in the sidebar. PNG, SVG, or JPEG — max 2 MB.
+        </p>
+
+        {logoUrl ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-4 p-3 rounded border border-primary/20 bg-background/40">
+              <img
+                src={logoUrl}
+                alt="Current logo"
+                className="h-10 max-w-[160px] object-contain"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-mono text-green-400">Custom logo active</p>
+                <p className="text-[10px] font-mono text-muted-foreground mt-0.5">Visible in the sidebar header</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="font-mono text-xs border-primary/30 text-primary hover:bg-primary/10 h-8"
+              >
+                {uploading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ImageUp className="h-3 w-3 mr-1" />}
+                Replace
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleRemove}
+                disabled={removing}
+                className="font-mono text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 h-8"
+              >
+                {removing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Trash2 className="h-3 w-3 mr-1" />}
+                Remove
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="font-mono text-xs border-primary/30 text-primary hover:bg-primary/10 w-full max-w-xs h-9"
+          >
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <ImageUp className="h-3 w-3 mr-2" />}
+            Choose Logo Image
+          </Button>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
       </CardContent>
     </Card>
   );
@@ -475,6 +603,8 @@ export default function SettingsPage() {
       </div>
 
       <ChangePasswordCard />
+
+      {isAdmin && <LogoCard />}
 
       {isAdmin && <TelegramCard />}
 

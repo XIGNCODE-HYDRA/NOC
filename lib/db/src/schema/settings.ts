@@ -4,6 +4,7 @@ export const settingsTable = pgTable("settings", {
   id: integer("id").primaryKey().default(1),
   telegramBotToken: text("telegram_bot_token"),
   telegramChatId: text("telegram_chat_id"),
+  logoFilename: text("logo_filename"),
 });
 
 export type Settings = typeof settingsTable.$inferSelect;
